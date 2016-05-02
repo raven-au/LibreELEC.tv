@@ -1,0 +1,64 @@
+debug_strip() {
+  if [ "$PLEX_DUMP_SYMBOLS" = "yes" ]; then
+    case $PKG_NAME in
+      qt5|plexmediaplayer|mpv|ffmpeg-plex)
+
+        PLEX_DUMP_LIBRARIES=`find $* -name "*.so" -type f -follow`
+        PLEX_DUMP_BINARIES=`find $* ! -name "*.*" -type f -executable`
+
+        # Dump symbols if we asked for
+        # create the symbols dump directory
+        PLEX_DUMP_DIR=$ROOT/$PKG_BUILD/.symbols
+        rm -rf $PLEX_DUMP_DIR || true
+        mkdir $PLEX_DUMP_DIR 
+	
+        for i in  $PLEX_DUMP_LIBRARIES $PLEX_DUMP_BINARIES; do
+          PLEX_DUMP_FILE_NAME=`basename $i`
+          echo " Dumping symbols for $PLEX_DUMP_FILE_NAME..."
+          $ROOT/$TOOLCHAIN/bin/dump_syms $i | xz > $PLEX_DUMP_DIR/$PLEX_DUMP_FILE_NAME.symbols.xz
+        done
+      ;;
+    esac
+  fi
+}
+
+deploy_symbols() {
+  if [ "$PLEX_DUMP_SYMBOLS" = "yes" ]; then
+    echo "Deploying symbols for $PKG_NAME..."
+    PLEX_DUMP_DIR=$ROOT/$PKG_BUILD/.symbols
+    mkdir -p  $ROOT/target/$1
+    cp  $PLEX_DUMP_DIR/* $ROOT/target/$1
+  fi
+}
+
+# override show_config to have our infor printed out
+eval "original_$(declare -f show_config)"
+show_config() {
+  original_show_config
+ 
+  # Add out config here
+   dashes="==========================="
+  plex_config="$plex_config\n $dashes$dashes$dashes"
+  plex_config="$plex_config\n $DISTRONAME Additional Configuration"
+  plex_config="$plex_config\n $dashes$dashes$dashes"
+
+  # Git Options
+  plex_config="$plex_config\n - PMP Repository:\t\t\t $PLEX_PMP_REPO"
+  plex_config="$plex_config\n - PMP Branch:\t\t\t\t $PLEX_PMP_BRANCH"
+  plex_config="$plex_config\n - PMP Git SHA:\t\t\t\t $PLEX_PMP_GITSHA"
+  plex_config="$plex_config\n - PMP Version:\t\t\t\t $PLEX_PMP_VERSION"
+
+  #Codecs options
+  plex_config="$plex_config\n - Codec build:\t\t\t\t $CODECS"
+  if [ $CODECS = "yes" ]; then
+    plex_config="$plex_config\n - Codecs arch:\t\t\t\t $PLEX_CODEC_ARCH"
+    plex_config="$plex_config\n - Codecs version :\t\t\t $PLEX_CODEC_VERSION"
+    plex_config="$plex_config\n - Codecs hash :\t\t\t $PLEX_CODEC_HASH"
+  fi
+
+  # Image
+  plex_config="$plex_config\n - Image file:\t\t\t\t $CUSTOM_IMAGE_NAME"
+  plex_config="$plex_config\n $dashes$dashes$dashes\n"
+  echo -e "$plex_config"
+}
+

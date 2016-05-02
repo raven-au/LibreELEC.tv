@@ -1,0 +1,278 @@
+# Name of the Distro to build (full name, without special characters)
+  DISTRONAME="PlexMediaPlayer"
+
+# short project description
+  DESCRIPTION="Plex - Enjoy your videos, photos and music anytime, anywhere"
+
+# Welcome Message for e.g. SSH Server (up to 5 Lines)
+  GREETING0="##############################################"
+  GREETING1="# ......... PlexMediaPlayer - Plex ......... #"
+  GREETING2="# ........... visit http://plex.tv ......... #"
+  GREETING3="##############################################"
+  GREETING4=""
+
+# Root password to integrate in the target system
+  ROOT_PASSWORD="plex"
+
+# Mediacenter to use (kodi / Plex Client / no)
+  MEDIACENTER="plexmediaplayer"
+
+# Install glibc locales to the build (yes / no)
+  GLIBC_LOCALES="yes"
+
+# Skins to install (Confluence)
+# Space separated list is supported,
+# e.g. SKINS="Confluence"
+  SKINS="Confluence"
+
+# Default Skin (Confluence)
+  SKIN_DEFAULT="Confluence"
+
+# install extra subtitle Fonts for KODI (yes / no)
+  KODI_EXTRA_FONTS="no"
+
+# build and install PulseAudio support (yes / no)
+  PULSEAUDIO_SUPPORT="no"
+
+# build and install espeak support (yes / no)
+  ESPEAK_SUPPORT="no"
+
+# build and install with non-free support
+# (RAR compression support in KODI) (yes / no)
+  KODI_NONFREE_SUPPORT="no"
+
+# build and install with BluRay support (yes / no)
+  KODI_BLURAY_SUPPORT="no"
+
+# build and install with BD+ support
+# (BD+ decryption support in KODI) (yes / no)
+  BLURAY_BDPLUS_SUPPORT="no"
+
+# build and install with AACS support
+# (BD decryption support in KODI) (yes / no)
+  BLURAY_AACS_SUPPORT="no"
+
+# build and install with DVDCSS support
+# (DVD decryption support in KODI) (yes / no)
+  KODI_DVDCSS_SUPPORT="no"
+
+# additional drivers to install:
+# for a list of additinoal drivers see packages/linux-drivers
+# Space separated list is supported,
+# e.g. ADDITIONAL_DRIVERS="DRIVER1 DRIVER2"
+  ADDITIONAL_DRIVERS="RTL8192CU RTL8192DU RTL8192EU RTL8188EU RTL8812AU"
+
+# build and install bluetooth support (yes / no)
+  BLUETOOTH_SUPPORT="yes"
+
+# build and install with KODI webfrontend (yes / no)
+  KODI_WEBSERVER_SUPPORT="no"
+
+# build and install Avahi (Zeroconf) daemon (yes / no)
+  AVAHI_DAEMON="no"
+
+# build with UPnP support (yes / no)
+  KODI_UPNP_SUPPORT="no"
+
+# build with MySQL support (yes / no)
+  KODI_MYSQL_SUPPORT="no"
+
+# build xbmc with sshlib support (yes / no)
+  KODI_SSHLIB_SUPPORT="yes"
+
+# build xbmc with optical drive support (yes / no)
+  KODI_OPTICAL_SUPPORT="no"
+
+# build with AirPlay support (stream videos from iDevices to KODI) (yes / no)
+  KODI_AIRPLAY_SUPPORT="no"
+
+# build with AirTunes support (stream music from iDevices to KODI) (yes / no)
+  KODI_AIRTUNES_SUPPORT="no"
+
+# build with libnfs support (mounting nfs shares with KODI) (yes / no)
+  KODI_NFS_SUPPORT="no"
+
+# build with Samba Client support (mounting SAMBA shares with KODI) (yes / no)
+  KODI_SAMBA_SUPPORT="yes"
+
+# include initial language addons for Kodi (yes / no)
+  KODI_LANGUAGE_ADDONS="yes"
+
+# build with NFS support (mounting nfs shares via the OS) (yes / no)
+  NFS_SUPPORT="no"
+
+# build with Samba Client support (mounting samba shares via the OS) (yes / no)
+  SAMBA_SUPPORT="yes"
+
+# build and install Samba Server (yes / no)
+  SAMBA_SERVER="yes"
+
+# build and install SFTP Server (yes / no)
+  SFTP_SERVER="yes"
+
+# build and install OpenVPN support (yes / no)
+  OPENVPN_SUPPORT="yes"
+
+# build and install diskmounter support (udevil)
+# this service provide auto mounting support for external drives in the
+# mediacenter also automount internally drives at boottime via udev (yes / no)
+  UDEVIL="yes"
+
+# build and install exFAT fuse support (yes / no)
+  EXFAT="yes"
+
+# build and install NTFS-3G fuse support (yes / no)
+  NTFS3G="yes"
+
+# build and install hfs filesystem utilities (yes / no)
+  HFSTOOLS="yes"
+
+# Windowmanager to use (ratpoison / fluxbox / none)
+  WINDOWMANAGER="fluxbox"
+
+# Xorg Graphic drivers to use (all / i915,i965,r200,r300,r600,nvidia)
+# Space separated list is supported,
+# e.g. GRAPHIC_DRIVERS="i915 i965 r300 r600 radeonsi nvidia"
+  GRAPHIC_DRIVERS="r300 r600 radeonsi i915 i965 nvidia nvidia-legacy"
+
+# build and install remote support (yes / no)
+  REMOTE_SUPPORT="yes"
+
+# build and install ATV IR remote support (yes / no)
+  ATVCLIENT_SUPPORT="yes"
+
+# build and install IRServer IR/LCD support (yes / no)
+  IRSERVER_SUPPORT="yes"
+
+# build and install Joystick support (yes / no)
+  JOYSTICK_SUPPORT="no"
+
+# build and install CEC adapter support (yes / no)
+  CEC_SUPPORT="yes"
+
+# build and install iSCSI support - iscsistart (yes / no)
+  ISCSI_SUPPORT="no"
+
+# LCD driver to Use - Possible drivers are ( Comma seperated:
+# bayrad,CFontz,CFontz633,CFontzPacket,curses,CwLnx,dm140,
+# ea65,EyeboxOne,g15,glcd,glcdlib,glk,hd44780,i2500vfd,
+# icp_a106,imon,imonlcd,IOWarrior,irman,irtrans,
+# joy,lb216,lcdm001,lcterm,lirc,lis,MD8800,mdm166a,
+# ms6931,mtc_s16209x,MtxOrb,mx5000,NoritakeVFD,
+# picolcd,pyramid,sed1330,sed1520,serialPOS,
+# serialVFD,shuttleVFD,sli,stv5730,SureElec,svga,vlsys_m428
+# 'all' compiles all drivers;
+# 'all,!xxx,!yyy' de-selects previously selected drivers
+# "none" for disable LCD support
+  LCD_DRIVER="none"
+
+# Support for partitioning and formating disks in initramfs (yes / no)
+# This adds support for parted and mkfs.ext3/4 to initramfs for OEM usage
+  INITRAMFS_PARTED_SUPPORT="no"
+
+# build with swap support (yes / no)
+  SWAP_SUPPORT="no"
+
+# swap support enabled per default (yes / no)
+  SWAP_ENABLED_DEFAULT="no"
+
+# swapfile size if SWAP_SUPPORT=yes in MB
+  SWAPFILESIZE="512"
+
+# build with installer (yes / no)
+  INSTALLER_SUPPORT="yes"
+
+# Testpackages for development (yes / no)
+  TESTING="no"
+
+# OEM packages for OEM's (yes / no)
+  OEM_SUPPORT="no"
+
+# build and install nano text editor (yes / no)
+  NANO_EDITOR="yes"
+
+# cron support (yes / no)
+  CRON_SUPPORT="yes"
+
+# Distribution Specific source location
+  DISTRO_MIRROR="http://sources.libreelec.tv/mirror"
+  DISTRO_SRC="http://sources.libreelec.tv/$LIBREELEC_VERSION"
+
+# Addon Server Url
+  ADDON_SERVER_URL="http://addons.libreelec.tv"
+
+# set the addon dirs
+  ADDON_PATH="$ADDON_VERSION/$PROJECT/$TARGET_ARCH"
+  ADDON_URL="$ADDON_SERVER_URL/$ADDON_PATH"
+
+# Default size of system partition, in MB, eg. 512
+  SYSTEM_SIZE=512
+# Default system partition offset, in sectors, eg. 2048
+  SYSTEM_PART_START=2048
+
+# Qt Modules configuration
+  QT_MODULES_CONFIG="	-no-accessibility -skip qtactiveqt -skip qtandroidextras \
+                    	-skip qtconnectivity -skip qtdoc -skip qtenginio \
+			-skip qtgraphicaleffects -skip qtlocation -skip qtmacextras \
+			-skip qtscript -skip qtsensors -skip qtserialport \
+			-skip qtwayland -skip qtwinextras -skip qtx11extras \
+			-skip qtxmlpatterns -skip qttranslations -skip qtmultimedia \
+			-skip qtquickcontrols2 -skip qt3d" 
+
+  QT_EXTRA_FLAGS=--force-debug-info
+
+# We want ssh enabled by default 
+EXTLINUX_PARAMETERS="ssh"
+EXTRA_CMDLINE=$EXTLINUX_PARAMETERS
+
+# Define our build variables
+# PMP repo
+export PLEX_PMP_REPO=${PMP_REPO:-plex-media-player}
+
+# PMP Branch
+PLEX_PMP_BRANCH=${PMP_BRANCH:-dist-ninja}
+export PLEX_PMP_BRANCH="`echo ${PLEX_PMP_BRANCH/origin\//}`"
+
+# PMP sha
+if [ -z $PLEX_PMP_GITSHA ]; then
+  export PLEX_PMP_GITSHA="`git ls-remote --heads git@github.com:plexinc/${PLEX_PMP_REPO}.git ${PLEX_PMP_BRANCH}|awk '{print substr($0,0,8)}'`"
+fi
+
+# PMP version
+if [ -z $PLEX_PMP_VERSION ]; then
+  if [ "`curl -sL -w "%{http_code}\\n" --user "plex-konvergo:$GIT_TOKEN" https://raw.githubusercontent.com/plexinc/plex-media-player/$PLEX_PMP_GITSHA/CMakeModules/VersionConfiguration.cmake -o /dev/null`" = "200" ]; then
+    export PLEX_PMP_VERSION="`curl -s -u plex-konvergo:$GIT_TOKEN https://raw.githubusercontent.com/plexinc/$PLEX_PMP_REPO/$PLEX_PMP_GITSHA/CMakeModules/VersionConfiguration.cmake|awk '/MAJOR |MINOR |NANO / {gsub(/\)/,""); printf $2"."}  END {print ""}'|sed 's/.$//g'`"
+  else
+    export PLEX_PMP_VERSION="dev"
+  fi
+fi
+
+# Codes build
+if [ "$CODECS" = "yes" ]; then
+  case $ARCH in
+    arm)
+     export PLEX_CODEC_ARCH="armv7"
+    ;;
+
+    *)
+      export PLEX_CODEC_ARCH=$ARCH
+    ;;
+  esac
+
+  if [ -z $PLEX_CODEC_VERSION ]; then
+    export PLEX_CODEC_VERSION="`curl -s -u plex-konvergo:$GIT_TOKEN https://raw.githubusercontent.com/plexinc/${PLEX_PMP_REPO}/$PLEX_PMP_GITSHA/CMakeModules/FetchDependencies.cmake|awk '/OPENELEC/ {getline;print $0}'|sed -n 's/.*NUMBER *\([^ ]*\))/\1/p'`"
+  fi
+
+  if [ -z $PLEX_CODEC_HASH ]; then
+    export PLEX_CODEC_HASH="`curl -s https://nightlies.plex.tv/directdl/plex-dependencies/plexmediaplayer-openelec-codecs/$PLEX_CODEC_VERSION/hash.txt`"
+  fi
+
+fi
+
+# build our custom vars
+if [ -z "$CUSTOM_IMAGE_NAME" ]; then
+  export CUSTOM_IMAGE_NAME="${DISTRONAME}-$PLEX_PMP_VERSION.${BUILD_NUMBER:-1}-$PLEX_PMP_GITSHA.$PROJECT-$TARGET_ARCH"
+fi
+
+CUSTOM_VERSION=$PLEX_PMP_VERSION
+CUSTOM_GIT_HASH=$PLEX_PMP_GITSHA
