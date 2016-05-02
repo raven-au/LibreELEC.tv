@@ -93,9 +93,12 @@ configure_target() {
 
  # Cod Options
  if [ "${CODECS}" = "yes" ]; then
-  COD_OPTIONS="-DENABLE_CODECS=on -DOE_ARCH=${PLEX_CODEC_ARCH} -DDEPENDCY_FOLDER=plexmediaplayer-openelec-codecs"
+  COD_OPTIONS_ENABLE="on"
+  COD_OPTIONS_DEPFOLDER="plexmediaplayer-openelec-codecs"
+  COD_DISABLE_BUNDLE_DEPS="off"
  else
-  COD_OPTIONS="-DENABLE_CODECS=off -DDISABLE_BUNDLED_DEPS=on"
+  COD_OPTIONS_ENABLE="off"
+  COD_DISABLE_BUNDLE_DEPS="on"
  fi
 
 echo "COD Options : ${COD_OPTIONS}"
@@ -109,7 +112,10 @@ CMAKE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/usr \
                -DCMAKE_VERBOSE_MAKEFILE=on \
                -DOPENELEC=on \
                -DBUILD_TARGET=${PMP_BUILD_TARGET} \
-               $COD_OPTIONS \
+               -DENABLE_CODECS=${COD_OPTIONS_ENABLE} \
+               -DOE_ARCH=${PLEX_CODEC_ARCH} \
+               -DDEPENDCY_FOLDER=${COD_OPTIONS_DEPFOLDER} \
+               -DDISABLE_BUNDLED_DEPS=${COD_DISABLE_BUNDLE_DEPS} \
                $CRASHDUMP_SECRET"
 
   CMAKE_OPTIONS+=" $ROOT/$BUILD/$PKG_NAME-$PKG_VERSION/."
@@ -127,6 +133,10 @@ CMAKE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/usr \
       -e "s%@TARGET_LDFLAGS@%$TARGET_LDFLAGS%g" \
       -e "s%@MAKEFLAGS@%$MAKEFLAGS%g" \
       -e "s%@BUILD_TARGET@%$PMP_BUILD_TARGET%g" \
+      -e "s%@COD_OPTIONS_ENABLE@%$COD_OPTIONS_ENABLE%g" \
+      -e "s%@COD_OPTIONS_DEPFOLDER@%$COD_OPTIONS_DEPFOLDER%g" \
+      -e "s%@COD_DISABLE_BUNDLE_DEPS@%$COD_DISABLE_BUNDLE_DEPS%g" \
+      -e "s%@COD_OE_ARCH@%${PLEX_CODEC_ARCH}%g" \
       -i $ROOT/$PKG_BUILD/toolchain.cmake
 
   # Configure the build
