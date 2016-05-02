@@ -212,7 +212,7 @@
 
 # Qt Modules configuration
   QT_MODULES_CONFIG="	-no-accessibility -skip qtactiveqt -skip qtandroidextras \
-                    	-skip qtconnectivity -skip qtdoc -skip qtenginio \
+                    	-skip qtdoc -skip qtenginio \
 			-skip qtgraphicaleffects -skip qtlocation -skip qtmacextras \
 			-skip qtscript -skip qtsensors -skip qtserialport \
 			-skip qtwayland -skip qtwinextras -skip qtx11extras \
