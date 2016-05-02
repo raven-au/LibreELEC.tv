@@ -1,0 +1,9 @@
+--- a/qtbase/config.tests/qpa/xcb-glx/xcb-glx.pro	2016-03-03 12:35:22.000000000 +0100
++++ a/qtbase/config.tests/qpa/xcb-glx/xcb-glx.pro	2016-04-21 13:18:59.816000000 +0200
+@@ -1,5 +1,5 @@
+ SOURCES = xcb-glx.cpp
+ CONFIG -= qt
+ 
+-LIBS += -lxcb -lxcb-glx
++LIBS += -lxcb -lxcb-glx -lXau
+ 

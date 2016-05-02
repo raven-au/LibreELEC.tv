@@ -1,0 +1,14 @@
+--- ./qtbase/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.cpp	2015-12-05 01:05:24.000000000 +0100
++++ ./qtbase/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.cpp	2016-04-02 11:46:55.200000000 +0200
+@@ -42,11 +42,6 @@
+ 
+ QT_BEGIN_NAMESPACE
+ 
+-struct fbdev_window {
+-    unsigned short width;
+-    unsigned short height;
+-};
+-
+ void QEglFSMaliIntegration::platformInit()
+ {
+     // Keep the non-overridden base class functions based on fb0 working.

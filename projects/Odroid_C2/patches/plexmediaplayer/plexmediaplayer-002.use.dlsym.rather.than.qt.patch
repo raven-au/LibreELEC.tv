@@ -1,0 +1,34 @@
+diff --git a/src/player/PlayerQuickItem.cpp b/src/player/PlayerQuickItem.cpp
+index 59fbb69..7df2a3a 100644
+--- a/src/player/PlayerQuickItem.cpp
++++ b/src/player/PlayerQuickItem.cpp
+@@ -13,6 +13,10 @@
+ #include "QsLog.h"
+ #include "utils/Utils.h"
+ 
++#if defined(Q_OS_LINUX)
++#include <dlfcn.h>
++#endif
++
+ #if defined(Q_OS_WIN32)
+ 
+ #include <windows.h>
+@@ -122,6 +126,18 @@ static void* get_proc_address(void* ctx, const char* name)
+     if (handle)
+       res = (void *)GetProcAddress(handle, name);
+   }
++#elif defined(Q_OS_LINUX)
++  if (!res)
++  {
++    // on some embedded devices, GetProcAddress doesn't allow to retrieve 
++    // properly the pointer, so here we try to get them in libGLES2.
++    void *handle = dlopen("libGLESv2.so", RTLD_LAZY);
++    if (handle)
++    {
++      res = dlsym(handle, name);
++      dlclose(handle);
++    }
++  }
+ #endif
+   return res;
+ }
