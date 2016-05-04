@@ -38,8 +38,10 @@ PKG_BASE_BUILD_DEPENDS_TARGET="bzip2 Python zlib:host zlib libpng tiff dbus glib
 # determine QPA related packages
 if [ "$DISPLAYSERVER" = "x11" ]; then
   PKG_QT_QPA="libXcursor libXtst nss libxkbcommon pciutils libXi libXScrnSaver"
+  QT_QPA_OPTS="-qpa xcb -opengl desktop -no-kms -no-directfb -qt-xcb"
 elif [ ! "$OPENGLES" = "no" ]; then
   PKG_QT_QPA="$OPENGLES libevdev libwebp"
+  QT_QPA_OPTS="-qpa eglfs -opengl es2 -no-kms -no-directfb -no-xcb"
 fi
 
 # Combine packages
@@ -68,19 +70,6 @@ QT_BASE_OPTS="	-sysroot ${SYSROOT_PREFIX} \
 		-no-libjpeg"
 				
 		
-# Define Qt QPA options
-case $PROJECT in
-  Generic)
-  # X11 configuration
-  QT_QPA_OPTS="-qpa xcb -opengl desktop -no-kms -no-directfb -qt-xcb"
-  ;;
-  RPi|RPi2)
-
-  # OpenGLES configuration
-  QT_QPA_OPTS="-qpa eglfs -opengl es2 -no-kms -no-directfb -no-xcb"
-  ;;
-esac
-
 PKG_CONFIGURE_OPTS="${QT_BASE_OPTS} ${QT_QPA_OPTS} ${QT_MODULES_CONFIG} ${QT_EXTRA_FLAGS}"
 
 configure_target() {
