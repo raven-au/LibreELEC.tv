@@ -212,12 +212,12 @@
 
 # Qt Modules configuration
   QT_MODULES_CONFIG="	-no-accessibility -skip qtactiveqt -skip qtandroidextras \
-                    	-skip qtdoc -skip qtenginio \
+                    	-skip qtdoc -skip qtvirtualkeyboard -skip qtcharts -skip qtdatavis3d\
 			-skip qtgraphicaleffects -skip qtlocation -skip qtmacextras \
-			-skip qtscript -skip qtsensors -skip qtserialport \
-			-skip qtwayland -skip qtwinextras -skip qtx11extras \
-			-skip qtxmlpatterns -skip qttranslations -skip qtmultimedia \
-			-skip qtquickcontrols2 -skip qt3d" 
+			-skip qtscript -skip qtsensors -skip qtserialport -skip qtcanvas3d\
+			-skip qtwayland -skip qtwinextras -skip qtx11extras -skip qtserialbus\
+			-skip qtxmlpatterns -skip qttranslations -skip qtmultimedia -skip qtscxml\
+			-skip qtquickcontrols2 -skip qt3d -skip qtpurchasing -skip qtgamepad" 
 
   QT_EXTRA_FLAGS=--force-debug-info
 
