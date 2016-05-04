@@ -94,16 +94,18 @@ configure_target() {
     cp -R ${PKG_DIR}/mkspecs/${PROJECT}/* $ROOT/$PKG_BUILD/qtbase/mkspecs/devices/$QT_MKSPECS_DEVICE/
   fi 
 
-  case $PROJECT in
-  RPi|RPi2)
-    # Add the RPI HW JPEG decoding files to webengine
-    cp -R $PKG_DIR/patches/RpiHWJpeg/* ${ROOT}/${BUILD}/${PKG_NAME}-${PKG_VERSION}/qtwebengine/src/3rdparty/chromium/third_party/WebKit/Source/platform/image-decoders/
+  # Add HW jpeg decoding
+  if [ -d "${PKG_DIR}/patches/${PROJECT}" ]; then
+    cp -R $PKG_DIR/patches/${PROJECT}/* ${ROOT}/${BUILD}/${PKG_NAME}-${PKG_VERSION}/qtwebengine/src/3rdparty/chromium/third_party/WebKit/Source/platform/image-decoders/
 
-    cp $SYSROOT_PREFIX/usr/include/interface/vcos/pthreads/vcos_platform_types.h $SYSROOT_PREFIX/usr/include/interface/vcos/
-    cp $SYSROOT_PREFIX/usr/include/interface/vcos/pthreads/vcos_platform.h $SYSROOT_PREFIX/usr/include/interface/vcos/
-    cp $SYSROOT_PREFIX/usr/include/interface/vmcs_host/linux/vchost_config.h $SYSROOT_PREFIX/usr/include/interface/vmcs_host/
-  ;;
-  esac
+    case $PROJECT in
+      RPi|RPi2)
+        cp $SYSROOT_PREFIX/usr/include/interface/vcos/pthreads/vcos_platform_types.h $SYSROOT_PREFIX/usr/include/interface/vcos/
+        cp $SYSROOT_PREFIX/usr/include/interface/vcos/pthreads/vcos_platform.h $SYSROOT_PREFIX/usr/include/interface/vcos/
+        cp $SYSROOT_PREFIX/usr/include/interface/vmcs_host/linux/vchost_config.h $SYSROOT_PREFIX/usr/include/interface/vmcs_host/
+      ;;
+    esac
+  fi
 
   # Undefines compiler options
   unset CC CXX AR OBJCOPY STRIP CFLAGS CXXFLAGS CPPFLAGS LDFLAGS LD RANLIB
