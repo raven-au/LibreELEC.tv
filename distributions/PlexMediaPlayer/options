@@ -240,7 +240,7 @@ fi
 
 # PMP version
 if [ -z $PLEX_PMP_VERSION ]; then
-  if [ "`curl -sL -w "%{http_code}\\n" --user "plex-konvergo:$GIT_TOKEN" https://raw.githubusercontent.com/plexinc/plex-media-player/$PLEX_PMP_GITSHA/CMakeModules/VersionConfiguration.cmake -o /dev/null`" = "200" ]; then
+  if [ "`curl -sL -w "%{http_code}\\n" --user "plex-konvergo:$GIT_TOKEN" https://raw.githubusercontent.com/plexinc/$PLEX_PMP_REPO/$PLEX_PMP_GITSHA/CMakeModules/VersionConfiguration.cmake -o /dev/null`" = "200" ]; then
     export PLEX_PMP_VERSION="`curl -s -u plex-konvergo:$GIT_TOKEN https://raw.githubusercontent.com/plexinc/$PLEX_PMP_REPO/$PLEX_PMP_GITSHA/CMakeModules/VersionConfiguration.cmake|awk '/MAJOR |MINOR |NANO / {gsub(/\)/,""); printf $2"."}  END {print ""}'|sed 's/.$//g'`"
   else
     export PLEX_PMP_VERSION="dev"
