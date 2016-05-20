@@ -62,32 +62,22 @@ namespace blink
     {
         WTF_MAKE_NONCOPYABLE(JPEGImageDecoder);
     public:
-        JPEGImageDecoder(AlphaOption, GammaAndColorProfileOption, size_t maxDecodedBytes);
-        ~JPEGImageDecoder() override;
+        JPEGImageDecoder(ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption, size_t maxDecodedBytes);
+        virtual ~JPEGImageDecoder();
 
         // ImageDecoder
-        String filenameExtension() const override { return "jpg"; }
-        IntSize decodedSize() const override { return m_decodedSize; }
-        virtual bool setSize(unsigned width, unsigned height) override;
+        virtual String filenameExtension() const override { return "jpg"; }
         virtual char* platformDecode() { return (char*)"JPEG"; }
         virtual bool readSize(unsigned int &width, unsigned int &height);
+        virtual unsigned int getMMALImageType() { return MMAL_ENCODING_JPEG; }
 
-
-        unsigned desiredScaleNumerator() const;
-
-
-        // Decodes the image.  If |onlySize| is true, stops decoding after
-        // calculating the image size.  If decoding fails but there is no more
-        // data coming, sets the "decode failure" flag.
-        void decode(bool onlySize);
+        virtual BRCMIMAGE_T* getDecoder() { return m_decoder; }
+        virtual BRCMIMAGE_REQUEST_T *getDecoderRequest() { return &m_dec_request; }
 
     private:
-        void decodeSize() override { decode(true); }
-        void decode(size_t) override { decode(false); }
 
-        IntSize m_decodedSize;
-        void setDecodedSize(unsigned width, unsigned height);
-
+        static BRCMIMAGE_REQUEST_T m_dec_request;
+        static BRCMIMAGE_T *m_decoder;
     };
 
 } // namespace blink
