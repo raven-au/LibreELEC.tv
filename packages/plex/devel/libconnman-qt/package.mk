@@ -22,7 +22,7 @@ PKG_REV="1"
 PKG_ARCH="any"
 PKG_LICENSE="GPL"
 PKG_SITE="https://nightlies.plex.tv"
-PKG_URL="$PKG_SITE/directdl/plex-oe-sources/$PKG_NAME-dummy.tar.gz"
+PKG_URL="$PKG_SITE/directdl/plex-oe-sources/$PKG_NAME-$PKG_VERSION.tar.gz"
 PKG_DEPENDS_TARGET="toolchain qt5"
 PKG_PRIORITY="optional"
 PKG_SECTION="multimedia"
@@ -32,12 +32,7 @@ PKG_LONGDESC="
 PKG_IS_ADDON="no"
 PKG_AUTORECONF="no"
 
-PKG_CONFIGURE_OPTS_TARGET="CONFIG+=notests VERSION=5.4.1 PREFIX=${SYSROOT_PREFIX}/usr"
-
-unpack() {
-  mkdir $BUILD/${PKG_NAME}-${PKG_VERSION}
-  git clone -b $PKG_VERSION git@github.com:plexinc/libconnman-qt.git $BUILD/${PKG_NAME}-${PKG_VERSION}/.
-}
+PKG_CONFIGURE_OPTS_TARGET="CONFIG+=notests VERSION=5.6.1 PREFIX=${SYSROOT_PREFIX}/usr"
 
 configure_target() {
   cd ${ROOT}/${BUILD}/${PKG_NAME}-${PKG_VERSION}
