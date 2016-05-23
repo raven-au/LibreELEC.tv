@@ -223,7 +223,7 @@
 
 # We want ssh enabled by default 
 EXTLINUX_PARAMETERS="ssh"
-EXTRA_CMDLINE=$EXTLINUX_PARAMETERS
+export EXTRA_CMDLINE=$EXTLINUX_PARAMETERS
 
 # Define our build variables
 # PMP repo
