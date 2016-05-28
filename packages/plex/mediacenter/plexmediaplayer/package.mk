@@ -87,6 +87,7 @@ configure_target() {
 
   if [ "$PLEX_DEBUG" = yes ]; then
     BUILD_TYPE="debug" 
+    strip_lto
   else
     BUILD_TYPE="RelWithDebInfo"
   fi
