@@ -215,7 +215,7 @@
                     	-skip qtdoc -skip qtvirtualkeyboard -skip qtcharts -skip qtdatavis3d\
 			-skip qtgraphicaleffects -skip qtlocation -skip qtmacextras \
 			-skip qtscript -skip qtsensors -skip qtserialport -skip qtcanvas3d\
-			-skip qtwayland -skip qtwinextras -skip qtx11extras -skip qtserialbus\
+			-skip qtwayland -skip qtwinextras -skip qtserialbus\
 			-skip qtxmlpatterns -skip qttranslations -skip qtmultimedia -skip qtscxml\
 			-skip qtquickcontrols2 -skip qt3d -skip qtpurchasing -skip qtgamepad" 
 
