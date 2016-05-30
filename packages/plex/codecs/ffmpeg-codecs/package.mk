@@ -49,7 +49,7 @@ unpack() {
   # Set variables for downloads
   BUILD_TAG="linux-openelec-$PLEX_CODEC_ARCH"
   DEPS_FILE="konvergo-codecs-depends-$BUILD_TAG-release-$PLEX_CODEC_HASH.tbz2"
-  DEPS_URL="$PKG_SITE/directdl/plex-dependencies/plexmediaplayer-openelec-codecs/$PLEX_CODEC_VERSION/$DEPS_FILE"
+  DEPS_URL="$PKG_SITE/directdl/${DEPENDENCY_TOKEN}/plexmediaplayer-openelec-codecs/$PLEX_CODEC_VERSION/$DEPS_FILE"
 
   echo "Getting SHA on $DEPS_URL to $BUILD_DIR"
   wget -q ${DEPS_URL} -P ${BUILD_DIR}
