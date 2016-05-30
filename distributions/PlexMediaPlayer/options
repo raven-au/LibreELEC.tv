@@ -264,7 +264,7 @@ if [ "$CODECS" = "yes" ]; then
   fi
 
   if [ -z $PLEX_CODEC_HASH ]; then
-    export PLEX_CODEC_HASH="`curl -s https://nightlies.plex.tv/directdl/plex-dependencies/plexmediaplayer-openelec-codecs/$PLEX_CODEC_VERSION/hash.txt`"
+    export PLEX_CODEC_HASH="`curl -s https://nightlies.plex.tv/directdl/${DEPENDENCY_TOKEN}/plexmediaplayer-openelec-codecs/$PLEX_CODEC_VERSION/hash.txt`"
   fi
 
 fi
