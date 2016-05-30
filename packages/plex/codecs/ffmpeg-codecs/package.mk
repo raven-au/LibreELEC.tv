@@ -51,17 +51,16 @@ unpack() {
   DEPS_FILE="konvergo-codecs-depends-$BUILD_TAG-release-$PLEX_CODEC_HASH.tbz2"
   DEPS_URL="$PKG_SITE/directdl/${DEPENDENCY_TOKEN}/plexmediaplayer-openelec-codecs/$PLEX_CODEC_VERSION/$DEPS_FILE"
 
-  echo "Getting SHA on $DEPS_URL to $BUILD_DIR"
+  echo "Downloading Deps from $DEPS_URL to $BUILD_DIR"
   wget -q ${DEPS_URL} -P ${BUILD_DIR}
   FILE_HASH="`curl -s ${DEPS_URL}.sha.txt`"
 
   echo "Checking file hash"
   # Check file hash
   if [ "`sha1sum ${BUILD_DIR}/${DEPS_FILE} |awk '{print $1}'`" = "${FILE_HASH}" ]; then
-    set -x
     tar xjf ${BUILD_DIR}/${DEPS_FILE} -C ./${BUILD_DIR} --wildcards --no-anchored 'lib*so*' 'lib*pc' '*h' --exclude='*lib/components/*' --strip=1
-    set +x
     rm -f ${BUILD_DIR}/${DEPS_FILE}
+    echo "Hash matched and files extracted"
   else
     exit 1
   fi
