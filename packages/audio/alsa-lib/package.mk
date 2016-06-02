@@ -1,4 +1,4 @@
-################################################################################
+###############################################################################
 #      This file is part of OpenELEC - http://www.openelec.tv
 #      Copyright (C) 2009-2016 Stephan Raue (stephan@openelec.tv)
 #
@@ -58,6 +58,11 @@ post_makeinstall_target() {
 
   mkdir -p $INSTALL/usr/config
     cp -PR $PKG_DIR/config/modprobe.d $INSTALL/usr/config
+
+if [ -d $DISTRO_DIR/$DISTRO/config/cards ]; then
+  mkdir -p $INSTALL/usr/share/alsa/cards
+  cp $DISTRO_DIR/$DISTRO/config/cards/* $INSTALL/usr/share/alsa/cards/.
+fi
 }
 
 post_install() {
