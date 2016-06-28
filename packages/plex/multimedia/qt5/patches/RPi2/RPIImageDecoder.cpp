@@ -47,189 +47,115 @@
 
 namespace
 {
-    // JPEG only supports a denominator of 8.
-    const unsigned scaleDenominator = 8;
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  FILE *logFile=NULL;
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    FILE *logFile=NULL;
-
-    // decoding mutex : RPI HW decoder can only safely process one decode at a time
-    pthread_mutex_t decode_mutex = PTHREAD_MUTEX_INITIALIZER;
+  // decoding mutex : RPI HW decoder can only safely process one decode at a time
+  pthread_mutex_t decode_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 } // namespace
 
 namespace blink
 {
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    RPIImageDecoder::RPIImageDecoder(ImageSource::AlphaOption alphaOption,
-                                       ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption,
-                                       size_t maxDecodedBytes)
-        : ImageDecoder(alphaOption, gammaAndColorProfileOption, maxDecodedBytes), m_hasAlpha(false)
+  BRCMIMAGE_T* RPIImageDecoder::m_decoder=NULL;
+  BRCMIMAGE_REQUEST_T RPIImageDecoder::m_dec_request;
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  RPIImageDecoder::RPIImageDecoder(AlphaOption alphaOption,
+                                     GammaAndColorProfileOption gammaAndColorProfileOption,
+                                     size_t maxDecodedBytes)
+      : ImageDecoder(alphaOption, gammaAndColorProfileOption, maxDecodedBytes), m_hasAlpha(false)
+  {
+    if (!m_decoder)
     {
+      BRCMIMAGE_STATUS_T status = brcmimage_create(BRCMIMAGE_TYPE_DECODER, MMAL_ENCODING_JPEG, &m_decoder);
+      if (status != BRCMIMAGE_SUCCESS)
+      {
+          log("could not create HW JPEG decoder");
+          brcmimage_release(m_decoder);
+          m_decoder = NULL;
+      }
+      else
+      {
+          log("HW JPEG decoder created (%x)", m_decoder);
+      }
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  void RPIImageDecoder::decodeHW(RefPtr<SharedBuffer> inputData, ImageFrame& outputBuffer, int outWidth, int outHeight)
+  {
+    clock_t start = clock();
+
+    // lock the mutex so that we only process once at a time
+    pthread_mutex_lock(&decode_mutex);
+
+    // setup decoder request information
+    BRCMIMAGE_REQUEST_T* dec_request = getDecoderRequest();
+    BRCMIMAGE_T *decoder = getDecoder();
+
+    memset(dec_request, 0, sizeof(BRCMIMAGE_REQUEST_T));
+    dec_request->input = (unsigned char*)inputData->data();
+    dec_request->input_size = inputData->size();
+    dec_request->output = (unsigned char*)outputBuffer.getAddr(0, 0);
+    dec_request->output_alloc_size = outWidth * outHeight * 4;
+    dec_request->output_handle = 0;
+    dec_request->pixel_format = PIXEL_FORMAT_RGBA;
+    dec_request->buffer_width = 0;
+    dec_request->buffer_height = 0;
+
+    brcmimage_acquire(decoder);
+    BRCMIMAGE_STATUS_T status = brcmimage_process(decoder, dec_request);
+
+    if (status == BRCMIMAGE_SUCCESS)
+    {
+      clock_t copy = clock();
+
+      unsigned char *ptr = (unsigned char *)outputBuffer.getAddr(0, 0);
+      for (unsigned int i = 0; i < dec_request->height * dec_request->width; i++)
+      {
+        // we swap RGBA -> BGRA
+        unsigned char tmp = *ptr;
+        *ptr = ptr[2];
+        ptr[2] = tmp;
+        ptr += 4;
+      }
+
+      brcmimage_release(decoder);
+
+      outputBuffer.setPixelsChanged(true);
+      outputBuffer.setStatus(ImageFrame::FrameComplete);
+      outputBuffer.setHasAlpha(m_hasAlpha);
+
+      clock_t end = clock();
+      unsigned long millis = (end - start) * 1000 / CLOCKS_PER_SEC;
+      unsigned long copymillis = (end - copy) * 1000 / CLOCKS_PER_SEC;
+
+      log("decode : image (%d x %d)(Alpha=%d) decoded in %d ms (copy in %d ms), source size = %d bytes", outWidth, outHeight, m_hasAlpha, millis, copymillis, inputData->size());
 
     }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    RPIImageDecoder::~RPIImageDecoder()
+    else
     {
+      log("decode : Decoding failed with status %d", status);
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    bool RPIImageDecoder::setSize(unsigned width, unsigned height)
+    pthread_mutex_unlock(&decode_mutex);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  void RPIImageDecoder::log(const char * format, ...)
+  {
+    if (!logFile)
     {
-        if (!ImageDecoder::setSize(width, height))
-            return false;
-
-        if (!desiredScaleNumerator())
-            return setFailed();
-
-        setDecodedSize(width, height);
-        return true;
+        logFile = fopen("/storage/webengine.log", "w");
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void RPIImageDecoder::setDecodedSize(unsigned width, unsigned height)
-    {
-        m_decodedSize = IntSize(width, height);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    unsigned RPIImageDecoder::desiredScaleNumerator() const
-    {
-        size_t originalBytes = size().width() * size().height() * 4;
-        if (originalBytes <= m_maxDecodedBytes) {
-            return scaleDenominator;
-        }
-
-        // Downsample according to the maximum decoded size.
-        unsigned scaleNumerator = static_cast<unsigned>(floor(sqrt(
-                                                                  // MSVC needs explicit parameter type for sqrt().
-                                                                  static_cast<float>(m_maxDecodedBytes * scaleDenominator * scaleDenominator / originalBytes))));
-
-        return scaleNumerator;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void RPIImageDecoder::decode(bool onlySize)
-    {
-        unsigned int width, height;
-
-        if (failed())
-            return;
-
-        // make sure we have all the data before doing anything
-        if (!isAllDataReceived())
-            return;
-
-        if (onlySize)
-        {
-            if (readSize(width, height));
-            {
-                setSize(width, height);
-            }
-            return;
-        }
-        else
-        {
-            readSize(width, height);
-
-            clock_t start = clock();
-
-            ImageFrame& buffer = m_frameBufferCache[0];
-
-            if (m_frameBufferCache.isEmpty())
-            {
-                log("decode : frameBuffercache is empty");
-                setFailed();
-                return;
-            }
-
-            if (buffer.status() == ImageFrame::FrameEmpty)
-            {
-                if (!buffer.setSize(width, height))
-                {
-                    log("decode : could not define buffer size");
-                    setFailed();
-                    return;
-                }
-
-                // The buffer is transparent outside the decoded area while the image is
-                // loading. The completed image will be marked fully opaque in jpegComplete().
-                buffer.setHasAlpha(false);
-            }
-
-            // lock the mutex so that we only process once at a time
-            pthread_mutex_lock(&decode_mutex);
-
-            // setup decoder request information
-            BRCMIMAGE_REQUEST_T* dec_request = getDecoderRequest();
-            BRCMIMAGE_T *decoder = getDecoder();
-
-            memset(dec_request, 0, sizeof(BRCMIMAGE_REQUEST_T));
-            dec_request->input = (unsigned char*)m_data->data();
-            dec_request->input_size = m_data->size();
-            dec_request->output = (unsigned char*)buffer.getAddr(0, 0);
-            dec_request->output_alloc_size = width * height * 4;
-            dec_request->output_handle = 0;
-            dec_request->pixel_format = PIXEL_FORMAT_RGBA;
-            dec_request->buffer_width = 0;
-            dec_request->buffer_height = 0;
-
-            brcmimage_acquire(decoder);
-            BRCMIMAGE_STATUS_T status = brcmimage_process(decoder, dec_request);
-
-            if (status == BRCMIMAGE_SUCCESS)
-            {
-                clock_t copy = clock();
-
-                unsigned char *ptr = (unsigned char *)buffer.getAddr(0, 0);
-                for (unsigned int i = 0; i < dec_request->height * dec_request->width; i++)
-                {
-                    // we swap RGBA -> BGRA
-                    unsigned char tmp = *ptr;
-                    *ptr = ptr[2];
-                    ptr[2] = tmp;
-                    ptr += 4;
-                }
-
-                brcmimage_release(decoder);
-
-                buffer.setPixelsChanged(true);
-                buffer.setStatus(ImageFrame::FrameComplete);
-                buffer.setHasAlpha(m_hasAlpha);
-
-                clock_t end = clock();
-                unsigned long millis = (end - start) * 1000 / CLOCKS_PER_SEC;
-                unsigned long copymillis = (end - copy) * 1000 / CLOCKS_PER_SEC;
-
-                log("decode : image (%d x %d)(Alpha=%d) decoded in %d ms (copy in %d ms), source size = %d bytes", width, height, m_hasAlpha, millis, copymillis, m_data->size());
-
-            }
-            else
-            {
-                log("decode : Decoding failed with status %d", status);
-            }
-
-            pthread_mutex_unlock(&decode_mutex);
-        }
-
-
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void RPIImageDecoder::log(const char * format, ...)
-    {
-        if (!logFile)
-        {
-            logFile = fopen("/storage/webengine.log", "w");
-        }
-
-        va_list args;
-        va_start (args, format);
-        fprintf(logFile, "RPIImageDecoder(%s):", filenameExtension().ascii().data());
-        vfprintf (logFile, format, args);
-        fprintf(logFile, "\r\n");
-        va_end (args);
-        fflush(logFile);
-    }
+    va_list args;
+    va_start (args, format);
+    fprintf(logFile, "RPIImageDecoder(jpg):");
+    vfprintf (logFile, format, args);
+    fprintf(logFile, "\r\n");
+    va_end (args);
+    fflush(logFile);
+  }
 }

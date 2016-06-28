@@ -1,0 +1,11 @@
+--- a/qtbase/src/network/ssl/qsslsocket_openssl_symbols_p.h	2016-04-12 21:24:52.000000000 +0200
++++ b/qtbase/src/network/ssl/qsslsocket_openssl_symbols_p.h	2016-05-03 08:43:09.184000000 +0200
+@@ -490,7 +490,7 @@
+ #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+ #endif // OPENSSL_NO_EC
+ #if OPENSSL_VERSION_NUMBER >= 0x10002000L
+-#define q_SSL_get_server_tmp_key(ssl, key) q_SSL_ctrl((ssl), SSL_CTRL_GET_SERVER_TMP_KEY, 0, (char *)key)
++#define q_SSL_get_server_tmp_key(ssl, key) q_SSL_ctrl((ssl), 109, 0, (char *)key)
+ #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+ 
+ // PKCS#12 support

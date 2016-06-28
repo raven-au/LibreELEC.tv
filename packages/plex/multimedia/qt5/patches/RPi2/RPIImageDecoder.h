@@ -39,38 +39,24 @@ namespace blink
     {
         WTF_MAKE_NONCOPYABLE(RPIImageDecoder);
     public:
-        RPIImageDecoder(ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption, size_t maxDecodedBytes);
-        virtual ~RPIImageDecoder();
+        RPIImageDecoder(AlphaOption, GammaAndColorProfileOption, size_t maxDecodedBytes);
+        ~RPIImageDecoder() override {};
 
         // ImageDecoder
-        virtual String filenameExtension() const override { return "jpg"; }
-        virtual char* platformDecode() { return (char*)"JPEG"; }
-        IntSize decodedSize() const override { return m_decodedSize; }
-        virtual bool setSize(unsigned width, unsigned height) override;
+        unsigned int getMMALImageType() { return MMAL_ENCODING_JPEG; }
 
-        virtual bool readSize(unsigned int &width, unsigned int &height) { return false; }
-        unsigned desiredScaleNumerator() const;
-        virtual unsigned int getMMALImageType() { return MMAL_ENCODING_JPEG; }
-
-        virtual BRCMIMAGE_T* getDecoder() { return NULL; }
-        virtual BRCMIMAGE_REQUEST_T *getDecoderRequest() { return NULL; }
+        BRCMIMAGE_T* getDecoder() { return m_decoder; }
+        BRCMIMAGE_REQUEST_T *getDecoderRequest() { return &m_dec_request; }
 
         void log(const char * format, ...);
+
+        void decodeHW(RefPtr<SharedBuffer> inputData, ImageFrame& outputBuffer, int outWidth, int outHeight);
     protected:
         bool m_hasAlpha;
 
     private:
-        void setDecodedSize(unsigned width, unsigned height);
-
-        void decodeSize() override { decode(true); }
-        void decode(size_t) override { decode(false); }
-
-        // Decodes the image.  If |onlySize| is true, stops decoding after
-        // calculating the image size.  If decoding fails but there is no more
-        // data coming, sets the "decode failure" flag.
-        void decode(bool onlySize);
-
-        IntSize m_decodedSize;
+        static BRCMIMAGE_REQUEST_T m_dec_request;
+        static BRCMIMAGE_T *m_decoder;
     };
 
 } // namespace blink

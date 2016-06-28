@@ -45,77 +45,150 @@
 #error Blink assumes a little-endian target.
 #endif
 
+namespace {
+  // JPEG only supports a denominator of 8.
+  const unsigned scaleDenominator = 8;
+}
+
 namespace blink
 {
-    BRCMIMAGE_T* JPEGImageDecoder::m_decoder=NULL;
-    BRCMIMAGE_REQUEST_T JPEGImageDecoder::m_dec_request;
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    JPEGImageDecoder::JPEGImageDecoder(ImageSource::AlphaOption alphaOption,
-                                       ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption,
-                                       size_t maxDecodedBytes)
-        : RPIImageDecoder(alphaOption, gammaAndColorProfileOption, maxDecodedBytes)
-    {
-        if (!m_decoder)
-        {
-            BRCMIMAGE_STATUS_T status = brcmimage_create(BRCMIMAGE_TYPE_DECODER, MMAL_ENCODING_JPEG, &m_decoder);
-            if (status != BRCMIMAGE_SUCCESS)
-            {
-                log("could not create HW JPEG decoder");
-                brcmimage_release(m_decoder);
-                m_decoder = NULL;
-            }
-            else
-            {
-                log("HW JPEG decoder created (%x)", m_decoder);
-            }
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  JPEGImageDecoder::JPEGImageDecoder(AlphaOption alphaOption,
+                                     GammaAndColorProfileOption gammaAndColorProfileOption,
+                                     size_t maxDecodedBytes)
+      : RPIImageDecoder(alphaOption, gammaAndColorProfileOption, maxDecodedBytes)
+  {
+  }
 
-        }
-    }
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  JPEGImageDecoder::~JPEGImageDecoder()
+  {
+  }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    JPEGImageDecoder::~JPEGImageDecoder()
-    {
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    bool JPEGImageDecoder::readSize(unsigned int &width, unsigned int &height)
-    {
-        JFIFHEAD *header = (JFIFHEAD *)m_data->data();
-        width = height = 0;
-
-        if (m_data->size() >= (sizeof(*header) - JFIF_DATA_SIZE))
-        {
-            BYTE* dataptr = header->data;
-
-            while (dataptr < ((BYTE*)header + m_data->size()))
-            {
-                if (dataptr[0] != 0xFF)
-                {
-                    log("readJpegSize : got wrong marker %d", (int)dataptr[0]);
-                    return false;
-                }
-
-                // we look for size block marker
-                if (dataptr[1] == 0xC0 && dataptr[2] == 0x0)
-                {
-                    width = (dataptr[8] + dataptr[7] * 256);
-                    height = (dataptr[6] + dataptr[5] * 256);
-                    return true;
-                }
-
-                dataptr += dataptr[3] + (dataptr[2] * 256) + 2;
-            }
-        }
-        else
-        {
-            log("readJpegSize : could not read %d bytes, read %d",sizeof(*header), m_data->size());
-            return false;
-        }
-
-
-        log("readJpegSize : could not find the proper size marker in %d bytes", m_data->size());
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  bool JPEGImageDecoder::setSize(unsigned width, unsigned height)
+  {
+    if (!ImageDecoder::setSize(width, height))
         return false;
+
+    if (!desiredScaleNumerator())
+        return setFailed();
+
+    setDecodedSize(width, height);
+    return true;
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  void JPEGImageDecoder::setDecodedSize(unsigned width, unsigned height)
+  {
+    m_decodedSize = IntSize(width, height);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  unsigned JPEGImageDecoder::desiredScaleNumerator() const
+  {
+    size_t originalBytes = size().width() * size().height() * 4;
+    if (originalBytes <= m_maxDecodedBytes) {
+        return scaleDenominator;
     }
+
+    // Downsample according to the maximum decoded size.
+    unsigned scaleNumerator = static_cast<unsigned>(floor(sqrt(
+    // MSVC needs explicit parameter type for sqrt().
+    static_cast<float>(m_maxDecodedBytes * scaleDenominator * scaleDenominator / originalBytes))));
+
+    return scaleNumerator;
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  bool JPEGImageDecoder::readSize(unsigned int &width, unsigned int &height)
+  {
+    JFIFHEAD *header = (JFIFHEAD *)m_data->data();
+    width = height = 0;
+
+    if (m_data->size() >= (sizeof(*header) - JFIF_DATA_SIZE))
+    {
+      BYTE* dataptr = header->data;
+
+      while (dataptr < ((BYTE*)header + m_data->size()))
+      {
+        if (dataptr[0] != 0xFF)
+        {
+          log("readJpegSize : got wrong marker %d", (int)dataptr[0]);
+          return false;
+        }
+
+        // we look for size block marker
+        if (dataptr[1] == 0xC0 && dataptr[2] == 0x0)
+        {
+          width = (dataptr[8] + dataptr[7] * 256);
+          height = (dataptr[6] + dataptr[5] * 256);
+          return true;
+        }
+
+        dataptr += dataptr[3] + (dataptr[2] * 256) + 2;
+      }
+    }
+    else
+    {
+      log("readJpegSize : could not read %d bytes, read %d",sizeof(*header), m_data->size());
+      return false;
+    }
+
+
+    log("readJpegSize : could not find the proper size marker in %d bytes", m_data->size());
+    return false;
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  void JPEGImageDecoder::decode(bool onlySize)
+  {
+    unsigned int width, height;
+
+    if (failed())
+        return;
+
+    // make sure we have all the data before doing anything
+    if (!isAllDataReceived())
+        return;
+
+    if (onlySize)
+    {
+      if (readSize(width, height));
+      {
+          setSize(width, height);
+      }
+      return;
+    }
+    else
+    {
+      readSize(width, height);
+
+      ImageFrame& buffer = m_frameBufferCache[0];
+
+      if (m_frameBufferCache.isEmpty())
+      {
+        log("decode : frameBuffercache is empty");
+        setFailed();
+        return;
+      }
+
+      if (buffer.status() == ImageFrame::FrameEmpty)
+      {
+        if (!buffer.setSize(width, height))
+        {
+            log("decode : could not define buffer size");
+            setFailed();
+            return;
+        }
+
+        // The buffer is transparent outside the decoded area while the image is
+        // loading. The completed image will be marked fully opaque in jpegComplete().
+        buffer.setHasAlpha(false);
+      }
+
+      decodeHW(m_data, buffer, width, height);
+    }
+  }
 }

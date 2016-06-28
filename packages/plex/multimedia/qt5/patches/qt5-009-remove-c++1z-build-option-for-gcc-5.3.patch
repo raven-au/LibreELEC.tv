@@ -2,10 +2,10 @@
 +++ b/qtbase/mkspecs/common/g++-base.conf	2016-05-03 07:42:14.208000000 +0200
 @@ -29,7 +29,7 @@
  
- QMAKE_CXXFLAGS_CXX11    = -std=c++0x
+ QMAKE_CXXFLAGS_CXX11    = -std=c++11
  QMAKE_CXXFLAGS_CXX14    = -std=c++1y
 -QMAKE_CXXFLAGS_CXX1Z    = -std=c++1z
 +QMAKE_CXXFLAGS_CXX1Z    = -std=c++11
- QMAKE_CXXFLAGS_GNUCXX11 = -std=gnu++0x
+ QMAKE_CXXFLAGS_GNUCXX11 = -std=gnu++11
  QMAKE_CXXFLAGS_GNUCXX14 = -std=gnu++1y
  QMAKE_CXXFLAGS_GNUCXX1Z = -std=gnu++1z
