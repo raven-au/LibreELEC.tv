@@ -168,6 +168,7 @@ makeinstall_target() {
   mkdir -p $INSTALL/usr/share/${MEDIACENTER,,} $INSTALL/usr/share/${MEDIACENTER,,}/scripts
   cp -R $ROOT/$BUILD/$PKG_NAME-$PKG_VERSION/resources/* ${INSTALL}/usr/share/${MEDIACENTER,,}
   cp $PKG_DIR/scripts/plex_update.sh ${INSTALL}/usr/share/${MEDIACENTER,,}/scripts/
+  cp -R $ROOT/$BUILD/$PKG_NAME-$PKG_VERSION/build/web-client* ${INSTALL}/usr/share/${MEDIACENTER,,}/
 
  debug_strip $INSTALL/usr/bin
 }
