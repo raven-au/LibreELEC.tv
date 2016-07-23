@@ -260,7 +260,7 @@ if [ "$CODECS" = "yes" ]; then
   esac
 
   if [ -z $PLEX_CODEC_VERSION ]; then
-    export PLEX_CODEC_VERSION="`curl -s -u plex-konvergo:$GIT_TOKEN https://raw.githubusercontent.com/plexinc/${PLEX_PMP_REPO}/$PLEX_PMP_GITSHA/CMakeModules/FetchDependencies.cmake|awk '/OPENELEC/ {getline;print $0}'|sed -n 's/.*NUMBER *\([^ ]*\))/\1/p'`"
+    export PLEX_CODEC_VERSION="`curl -s -u plex-konvergo:$GIT_TOKEN https://raw.githubusercontent.com/plexinc/${PLEX_PMP_REPO}/$PLEX_PMP_GITSHA/CMakeModules/DependencyConfiguration.cmake|awk '/OPENELEC/ {getline;getline;print $0}'|sed -n 's/.*NUMBER *\([^ ]*\))/\1/p'`"
   fi
 
   if [ -z $PLEX_CODEC_HASH ]; then
