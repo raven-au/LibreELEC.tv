@@ -1,0 +1,11 @@
+--- a/arch/arm64/boot/dts/meson64_odroidc2.dts	2016-06-27 19:22:07.000000000 +0200
++++ b/arch/arm64/boot/dts/meson64_odroidc2.dts	2016-07-02 19:22:26.344000000 +0200
+@@ -74,7 +74,7 @@
+ 
+ 		ion_reserved:linux,ion-dev {
+ 			compatible = "amlogic, idev-mem";
+-			size = <0x0 0x2000000>;
++			size = <0x0 0x8000000>;
+ 			multi-use;
+ 		};
+ 

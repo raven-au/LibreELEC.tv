@@ -1,0 +1,214 @@
+--- a/drivers/amlogic/amports/video.c	2016-07-31 07:25:39.700000000 +0200
++++ b/drivers/amlogic/amports/video.c	2016-07-31 07:25:06.140000000 +0200
+@@ -48,6 +48,7 @@
+ #include <linux/amlogic/canvas/canvas_mgr.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/dma-contiguous.h>
++#include <linux/kfifo.h>
+ 
+ #include "amports_priv.h"
+ 
+@@ -429,6 +430,7 @@
+ #define DEBUG_FLAG_RDMA_WAIT_1		     0x40000
+ #define DEBUG_FLAG_VSYNC_DONONE                0x80000
+ #define DEBUG_FLAG_GOFIELD_MANUL             0x100000
++#define DEBUG_FLAG_FREERUN_FRAME             0x200000
+ static int debug_flag;
+ 
+ /* DEBUG_FLAG_BLACKOUT; */
+@@ -507,6 +509,11 @@
+ static u32 video_notify_flag;
+ static int enable_video_discontinue_report = 1;
+ 
++// FREERUN_FRAME declarations
++#define VF_POOL_SIZE        64
++static DECLARE_KFIFO(ready_q, struct vframe_s *, VF_POOL_SIZE);
++static DECLARE_KFIFO(display_q, struct vframe_s *, VF_POOL_SIZE);
++
+ #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+ static u32 video_scaler_mode;
+ static int content_top = 0, content_left = 0, content_w = 0, content_h;
+@@ -739,6 +746,7 @@
+ #define FREERUN_NONE    0	/* no freerun mode */
+ #define FREERUN_NODUR   1	/* freerun without duration */
+ #define FREERUN_DUR     2	/* freerun with duration */
++#define FREERUN_FRAME   3	/* freerun with frame control */
+ static u32 freerun_mode;
+ static u32 slowsync_repeat_enable;
+ 
+@@ -1289,13 +1297,31 @@
+ /*********************************************************/
+ static inline struct vframe_s *video_vf_peek(void)
+ {
+-	return vf_peek(RECEIVER_NAME);
++	if (freerun_mode == FREERUN_FRAME)
++	{
++		struct vframe_s *vf;
++		if (kfifo_peek(&display_q, &vf))
++			return vf;
++		else
++			return NULL;
++	}
++	else
++		return vf_peek(RECEIVER_NAME);
+ }
+ 
+ static inline struct vframe_s *video_vf_get(void)
+ {
+ 	struct vframe_s *vf = NULL;
+-	vf = vf_get(RECEIVER_NAME);
++
++	if (freerun_mode == FREERUN_FRAME)
++	{
++		if (kfifo_get(&display_q, &vf))
++			return vf;
++		else
++			return NULL;
++	}
++
++	vf = vf_get(RECEIVER_NAME);	
+ 
+ 	if (vf) {
+ 		video_notify_flag |= VIDEO_NOTIFY_PROVIDER_GET;
+@@ -1335,9 +1361,18 @@
+ static inline void video_vf_put(struct vframe_s *vf)
+ {
+ 	struct vframe_provider_s *vfp = vf_get_provider(RECEIVER_NAME);
+-	if (vfp && atomic_dec_and_test(&vf->use_cnt)) {
++	if (freerun_mode == FREERUN_FRAME)
++	{
+ 		vf_put(vf, RECEIVER_NAME);
+-		video_notify_flag |= VIDEO_NOTIFY_PROVIDER_PUT;
++		atomic_dec(&vf->use_cnt);
++		vf_notify_provider(RECEIVER_NAME, VFRAME_EVENT_RECEIVER_PUT | VFRAME_EVENT_RECEIVER_GET, NULL);
++	}
++	else
++	{
++		if (vfp && atomic_dec_and_test(&vf->use_cnt)) {
++			vf_put(vf, RECEIVER_NAME);
++			video_notify_flag |= VIDEO_NOTIFY_PROVIDER_PUT;
++		}
+ 	}
+ }
+ 
+@@ -2875,7 +2910,7 @@
+ 	    DEBUG_FLAG_FFPLAY)
+ 		return true;
+ 
+-	if (FREERUN_NODUR == freerun_mode || hdmi_in_onvideo)
++	if (FREERUN_NODUR == freerun_mode || hdmi_in_onvideo || FREERUN_FRAME == freerun_mode)
+ 		return true;
+ 
+ 	if ((trickmode_i == 1) || ((trickmode_fffb == 1))) {
+@@ -4458,6 +4493,8 @@
+ 		video_vf_light_unreg_provider();
+ 	else if (type == VFRAME_EVENT_PROVIDER_REG) {
+ 		enable_video_discontinue_report = 1;
++		kfifo_reset(&ready_q);
++		kfifo_reset(&display_q);
+ #ifdef CONFIG_AM_VIDEO2
+ 		provider_name = (char *)data;
+ 		if (strncmp(provider_name, "decoder", 7) == 0
+@@ -4495,6 +4532,18 @@
+ 		set_vframe_rate_end_hint();
+ #endif
+ 	}
++	else if (type == VFRAME_EVENT_PROVIDER_VFRAME_READY) {
++		if (freerun_mode == FREERUN_FRAME)
++		{
++			struct vframe_s *vf = vf_get(RECEIVER_NAME);
++			if (vf)
++			{
++				if (debugflags & DEBUG_FLAG_FREERUN_FRAME)
++					pr_info("got a frame ready, queuing %p\n", vf);
++				kfifo_put(&ready_q, vf);
++			}
++		}
++	}
+ 	return 0;
+ }
+ 
+@@ -5181,6 +5230,60 @@
+ 		vsync_slow_factor = arg;
+ 		break;
+ 
++	case AMSTREAM_IOC_GET_FREERUN_FRAME:
++	  {
++		  struct vframe_s *vf;
++			ret = -EFAULT;
++
++			if (kfifo_get(&ready_q, &vf) == 1)
++			{
++				if (debugflags & DEBUG_FLAG_FREERUN_FRAME)
++					pr_info("AMSTREAM_IOC_GET_FREERUN_FRAME got %p\n", vf);
++
++				if (copy_to_user(argp, &vf, sizeof(unsigned long)) == 0)
++					ret = 0;
++			}
++	  }
++		break;
++
++	case AMSTREAM_IOC_PUT_FREERUN_FRAME:
++	  {
++		  struct vframe_s *vf;
++			ret = -EFAULT;
++
++			if (copy_from_user(&vf, argp, sizeof(unsigned long)) == 0)
++			{
++				if (vf)
++				{
++					if (debugflags & DEBUG_FLAG_FREERUN_FRAME)
++						pr_info("AMSTREAM_IOC_PUT_FREERUN_FRAME put %p\n", vf);
++
++					if (kfifo_put(&display_q, vf) == 1)
++						ret =  0;
++				}
++			}
++	  }
++		break;
++
++	case AMSTREAM_IOC_FREE_FREERUN_FRAME:
++	  {
++		  struct vframe_s *vf;
++			ret = -EFAULT;
++
++			if (copy_from_user(&vf, argp, sizeof(unsigned long)) == 0)
++			{
++				if (debugflags & DEBUG_FLAG_FREERUN_FRAME)
++					pr_info("AMSTREAM_IOC_FREE_FREERUN_FRAME free %p\n", vf);
++
++				if (vf)
++				{
++					video_vf_put(vf);
++					ret = 0;
++				}
++			}
++	  }
++		break;
++
+ 	default:
+ 		return -EINVAL;
+ 	}
+@@ -7117,6 +7220,8 @@
+ 	set_clone_frame_rate(android_clone_rate, 0);
+ #endif
+ 
++	INIT_KFIFO(ready_q);
++	INIT_KFIFO(display_q);
+ 	return 0;
+ 
+  err3:
+ 
+--- a/include/linux/amlogic/amports/amstream.h	2016-05-08 11:51:13.962400647 +0200
++++ b/include/linux/amlogic/amports/amstream.h	2016-07-31 07:51:19.384000000 +0200
+@@ -150,6 +150,9 @@
+ #define AMSTREAM_IOC_SET_SUBTITLE_INFO _IOW((_A_M), 0xae, int)
+ #define AMSTREAM_IOC_SET_OMX_VPTS _IOW((_A_M), 0xaf, int)
+ #define AMSTREAM_IOC_GET_OMX_VPTS _IOW((_A_M), 0xb0, int)
++#define AMSTREAM_IOC_GET_FREERUN_FRAME _IOR((_A_M), 0xb1, unsigned long)
++#define AMSTREAM_IOC_PUT_FREERUN_FRAME _IOW((_A_M), 0xb2, unsigned long)
++#define AMSTREAM_IOC_FREE_FREERUN_FRAME _IOW((_A_M), 0xb3, unsigned long)
+ 
+ #define AMSTREAM_IOC_GET_TRICK_VPTS _IOR((_A_M), 0xf0, int)
+ #define AMSTREAM_IOC_DISABLE_SLOW_SYNC _IOW((_A_M), 0xf1, int)
+ 
