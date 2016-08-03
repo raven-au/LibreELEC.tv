@@ -1,0 +1,1027 @@
+From e4520709fb0171d345c5fd1b2f3144d542112b01 Mon Sep 17 00:00:00 2001
+From: wm4 <wm4@nowhere>
+Date: Mon, 11 Jul 2016 14:32:03 +0200
+Subject: [PATCH 1/9] Revert "Revert "bcm2835: extend allowed range of channels
+ and samplerates""
+
+This reverts commit 61e8ffe1367617defdc7230755be8b94aa33093c.
+---
+ sound/arm/bcm2835-pcm.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/sound/arm/bcm2835-pcm.c b/sound/arm/bcm2835-pcm.c
+index d2de13c..b6ee027 100755
+--- a/sound/arm/bcm2835-pcm.c
++++ b/sound/arm/bcm2835-pcm.c
+@@ -26,9 +26,9 @@ static struct snd_pcm_hardware snd_bcm2835_playback_hw = {
+ 	.formats = SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+ 	.rates = SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+ 	.rate_min = 8000,
+-	.rate_max = 48000,
++	.rate_max = 192000,
+ 	.channels_min = 1,
+-	.channels_max = 2,
++	.channels_max = 8,
+ 	.buffer_bytes_max = 128 * 1024,
+ 	.period_bytes_min =   1 * 1024,
+ 	.period_bytes_max = 128 * 1024,
+@@ -43,9 +43,9 @@ static struct snd_pcm_hardware snd_bcm2835_playback_spdif_hw = {
+ 	.rates = SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_44100 |
+ 		SNDRV_PCM_RATE_48000,
+ 	.rate_min = 44100,
+-	.rate_max = 48000,
++	.rate_max = 192000,
+ 	.channels_min = 2,
+-	.channels_max = 2,
++	.channels_max = 8,
+ 	.buffer_bytes_max = 128 * 1024,
+ 	.period_bytes_min =   1 * 1024,
+ 	.period_bytes_max = 128 * 1024,
+-- 
+2.8.1
+
+
+From 7b79da33ae8fa9335df4a457bffa49b7daf2888b Mon Sep 17 00:00:00 2001
+From: wm4 <wm4@nowhere>
+Date: Mon, 11 Jul 2016 14:32:12 +0200
+Subject: [PATCH 2/9] Revert "Revert "bcm2835: implement channel map API""
+
+This reverts commit 06dd9cf244f3107e4e744b51d55241be6e345706.
+---
+ sound/arm/bcm2835-ctl.c   | 299 ++++++++++++++++++++++++++++++++++++++++++++++
+ sound/arm/bcm2835-pcm.c   |  69 +++++++++--
+ sound/arm/bcm2835-vchiq.c |  13 ++
+ sound/arm/bcm2835.h       |   4 +
+ 4 files changed, 378 insertions(+), 7 deletions(-)
+
+diff --git a/sound/arm/bcm2835-ctl.c b/sound/arm/bcm2835-ctl.c
+index 75dc322..5b8e6bd2 100755
+--- a/sound/arm/bcm2835-ctl.c
++++ b/sound/arm/bcm2835-ctl.c
+@@ -327,6 +327,304 @@ static struct snd_kcontrol_new snd_bcm2835_spdif[] = {
+ 	},
+ };
+ 
++struct cea_channel_speaker_allocation {
++	int ca_index;
++	int speakers[8];
++};
++
++#define FL	SNDRV_CHMAP_FL
++#define FR	SNDRV_CHMAP_FR
++#define RL	SNDRV_CHMAP_RL
++#define RR	SNDRV_CHMAP_RR
++#define LFE	SNDRV_CHMAP_LFE
++#define FC	SNDRV_CHMAP_FC
++#define RLC	SNDRV_CHMAP_RLC
++#define RRC	SNDRV_CHMAP_RRC
++#define RC	SNDRV_CHMAP_RC
++#define FLC	SNDRV_CHMAP_FLC
++#define FRC	SNDRV_CHMAP_FRC
++#define FLH	SNDRV_CHMAP_TFL
++#define FRH	SNDRV_CHMAP_TFR
++#define FLW	SNDRV_CHMAP_FLW
++#define FRW	SNDRV_CHMAP_FRW
++#define TC	SNDRV_CHMAP_TC
++#define FCH	SNDRV_CHMAP_TFC
++
++/*
++ * CEA-861 channel maps
++ *
++ * Stolen from sound/pci/hda/patch_hdmi.c
++ * (unlike the source, this uses SNDRV_* constants directly, as by the
++ *  map_tables array in patch_hdmi.c)
++ * Unknown entries use 0, which unfortunately is SNDRV_CHMAP_UNKNOWN instead
++ * of SNDRV_CHMAP_NA.
++ */
++static struct cea_channel_speaker_allocation channel_allocations[] = {
++/*			  channel:   7     6    5    4    3     2    1    0  */
++{ .ca_index = 0x00,  .speakers = {   0,    0,   0,   0,   0,    0,  FR,  FL } },
++				 /* 2.1 */
++{ .ca_index = 0x01,  .speakers = {   0,    0,   0,   0,   0,  LFE,  FR,  FL } },
++				 /* Dolby Surround */
++{ .ca_index = 0x02,  .speakers = {   0,    0,   0,   0,  FC,    0,  FR,  FL } },
++				 /* surround40 */
++{ .ca_index = 0x08,  .speakers = {   0,    0,  RR,  RL,   0,    0,  FR,  FL } },
++				 /* surround41 */
++{ .ca_index = 0x09,  .speakers = {   0,    0,  RR,  RL,   0,  LFE,  FR,  FL } },
++				 /* surround50 */
++{ .ca_index = 0x0a,  .speakers = {   0,    0,  RR,  RL,  FC,    0,  FR,  FL } },
++				 /* surround51 */
++{ .ca_index = 0x0b,  .speakers = {   0,    0,  RR,  RL,  FC,  LFE,  FR,  FL } },
++				 /* 6.1 */
++{ .ca_index = 0x0f,  .speakers = {   0,   RC,  RR,  RL,  FC,  LFE,  FR,  FL } },
++				 /* surround71 */
++{ .ca_index = 0x13,  .speakers = { RRC,  RLC,  RR,  RL,  FC,  LFE,  FR,  FL } },
++
++{ .ca_index = 0x03,  .speakers = {   0,    0,   0,   0,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x04,  .speakers = {   0,    0,   0,  RC,   0,    0,  FR,  FL } },
++{ .ca_index = 0x05,  .speakers = {   0,    0,   0,  RC,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x06,  .speakers = {   0,    0,   0,  RC,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x07,  .speakers = {   0,    0,   0,  RC,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x0c,  .speakers = {   0,   RC,  RR,  RL,   0,    0,  FR,  FL } },
++{ .ca_index = 0x0d,  .speakers = {   0,   RC,  RR,  RL,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x0e,  .speakers = {   0,   RC,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x10,  .speakers = { RRC,  RLC,  RR,  RL,   0,    0,  FR,  FL } },
++{ .ca_index = 0x11,  .speakers = { RRC,  RLC,  RR,  RL,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x12,  .speakers = { RRC,  RLC,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x14,  .speakers = { FRC,  FLC,   0,   0,   0,    0,  FR,  FL } },
++{ .ca_index = 0x15,  .speakers = { FRC,  FLC,   0,   0,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x16,  .speakers = { FRC,  FLC,   0,   0,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x17,  .speakers = { FRC,  FLC,   0,   0,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x18,  .speakers = { FRC,  FLC,   0,  RC,   0,    0,  FR,  FL } },
++{ .ca_index = 0x19,  .speakers = { FRC,  FLC,   0,  RC,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x1a,  .speakers = { FRC,  FLC,   0,  RC,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x1b,  .speakers = { FRC,  FLC,   0,  RC,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x1c,  .speakers = { FRC,  FLC,  RR,  RL,   0,    0,  FR,  FL } },
++{ .ca_index = 0x1d,  .speakers = { FRC,  FLC,  RR,  RL,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x1e,  .speakers = { FRC,  FLC,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x1f,  .speakers = { FRC,  FLC,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x20,  .speakers = {   0,  FCH,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x21,  .speakers = {   0,  FCH,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x22,  .speakers = {  TC,    0,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x23,  .speakers = {  TC,    0,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x24,  .speakers = { FRH,  FLH,  RR,  RL,   0,    0,  FR,  FL } },
++{ .ca_index = 0x25,  .speakers = { FRH,  FLH,  RR,  RL,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x26,  .speakers = { FRW,  FLW,  RR,  RL,   0,    0,  FR,  FL } },
++{ .ca_index = 0x27,  .speakers = { FRW,  FLW,  RR,  RL,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x28,  .speakers = {  TC,   RC,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x29,  .speakers = {  TC,   RC,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x2a,  .speakers = { FCH,   RC,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x2b,  .speakers = { FCH,   RC,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x2c,  .speakers = {  TC,  FCH,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x2d,  .speakers = {  TC,  FCH,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x2e,  .speakers = { FRH,  FLH,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x2f,  .speakers = { FRH,  FLH,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x30,  .speakers = { FRW,  FLW,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x31,  .speakers = { FRW,  FLW,  RR,  RL,  FC,  LFE,  FR,  FL } },
++};
++
++static int snd_bcm2835_chmap_ctl_tlv(struct snd_kcontrol *kcontrol, int op_flag,
++				     unsigned int size, unsigned int __user *tlv)
++{
++	unsigned int __user *dst;
++	int count = 0;
++	int i;
++
++	if (size < 8)
++		return -ENOMEM;
++	if (put_user(SNDRV_CTL_TLVT_CONTAINER, tlv))
++		return -EFAULT;
++	size -= 8;
++	dst = tlv + 2;
++	for (i = 0; i < ARRAY_SIZE(channel_allocations); i++) {
++		struct cea_channel_speaker_allocation *ch = &channel_allocations[i];
++		int num_chs = 0;
++		int chs_bytes;
++		int c;
++
++		for (c = 0; c < 8; c++) {
++			if (ch->speakers[c])
++				num_chs++;
++		}
++
++		chs_bytes = num_chs * 4;
++		if (size < 8)
++			return -ENOMEM;
++		if (put_user(SNDRV_CTL_TLVT_CHMAP_FIXED, dst) ||
++		    put_user(chs_bytes, dst + 1))
++			return -EFAULT;
++		dst += 2;
++		size -= 8;
++		count += 8;
++		if (size < chs_bytes)
++			return -ENOMEM;
++		size -= chs_bytes;
++		count += chs_bytes;
++		for (c = 0; c < 8; c++) {
++			int sp = ch->speakers[7 - c];
++			if (sp) {
++				if (put_user(sp, dst))
++					return -EFAULT;
++				dst++;
++			}
++		}
++	}
++	if (put_user(count, tlv + 1))
++		return -EFAULT;
++	return 0;
++}
++
++static int snd_bcm2835_chmap_ctl_get(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_pcm_chmap *info = snd_kcontrol_chip(kcontrol);
++	bcm2835_chip_t *chip = info->private_data;
++	unsigned int idx = snd_ctl_get_ioffidx(kcontrol, &ucontrol->id);
++	struct snd_pcm_substream *substream = snd_pcm_chmap_substream(info, idx);
++	struct cea_channel_speaker_allocation *ch = NULL;
++	int res = 0;
++	int cur = 0;
++	int i;
++
++	if (mutex_lock_interruptible(&chip->audio_mutex))
++		return -EINTR;
++
++	if (!substream || !substream->runtime) {
++		res = -ENODEV;
++		goto unlock;
++	}
++
++	for (i = 0; i < ARRAY_SIZE(channel_allocations); i++) {
++		if (channel_allocations[i].ca_index == chip->cea_chmap)
++			ch = &channel_allocations[i];
++	}
++
++	/* If no layout was set yet, return a dummy. Apparently the userspace
++	 * API will be confused if we don't. */
++	if (!ch)
++		ch = &channel_allocations[0];
++
++	for (i = 0; i < 8; i++) {
++		if (ch->speakers[7 - i])
++			ucontrol->value.integer.value[cur++] = ch->speakers[7 - i];
++	}
++	while (cur < 8)
++		ucontrol->value.integer.value[cur++] = SNDRV_CHMAP_NA;
++
++unlock:
++	mutex_unlock(&chip->audio_mutex);
++	return res;
++}
++
++static int snd_bcm2835_chmap_ctl_put(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_pcm_chmap *info = snd_kcontrol_chip(kcontrol);
++	bcm2835_chip_t *chip = info->private_data;
++	unsigned int idx = snd_ctl_get_ioffidx(kcontrol, &ucontrol->id);
++	struct snd_pcm_substream *substream = snd_pcm_chmap_substream(info, idx);
++	int i, prepared = 0, cea_chmap = -1;
++	int res = 0;
++	int remap[8];
++
++	if (mutex_lock_interruptible(&chip->audio_mutex))
++		return -EINTR;
++
++	if (!substream || !substream->runtime) {
++		res = -ENODEV;
++		goto unlock;
++	}
++
++	switch (substream->runtime->status->state) {
++	case SNDRV_PCM_STATE_OPEN:
++	case SNDRV_PCM_STATE_SETUP:
++		break;
++	case SNDRV_PCM_STATE_PREPARED:
++		prepared = 1;
++		break;
++	default:
++		res = -EBUSY;
++		goto unlock;
++	}
++
++	for (i = 0; i < ARRAY_SIZE(channel_allocations); i++) {
++		struct cea_channel_speaker_allocation *ch = &channel_allocations[i];
++		int matches = 1;
++		int cur = 0;
++		int x;
++		memset(remap, 0, sizeof(remap));
++		for (x = 0; x < substream->runtime->channels; x++) {
++			int sp = ucontrol->value.integer.value[x];
++			while (cur < 8 && !ch->speakers[7 - cur])
++				cur++;
++			if (cur >= 8) {
++				/* user has more channels than ch */
++				matches = 0;
++				break;
++			}
++			if (ch->speakers[7 - cur] != sp) {
++				matches = 0;
++				break;
++			}
++			remap[x] = cur;
++			cur++;
++		}
++		for (x = cur; x < 8; x++) {
++			if (ch->speakers[7 - x]) {
++				/* ch has more channels than user */
++				matches = 0;
++				break;
++			}
++		}
++		if (matches) {
++			cea_chmap = ch->ca_index;
++			break;
++		}
++	}
++
++	if (cea_chmap < 0) {
++		res = -EINVAL;
++		goto unlock;
++	}
++
++	/* don't change the layout if another substream is active */
++	if (chip->opened != (1 << substream->number) && chip->cea_chmap != cea_chmap) {
++		res = -EBUSY; /* unsure whether this is a good error code */
++		goto unlock;
++	}
++
++	chip->cea_chmap = cea_chmap;
++	for (i = 0; i < 8; i++)
++		chip->map_channels[i] = remap[i];
++	if (prepared)
++		snd_bcm2835_pcm_prepare_again(substream);
++
++unlock:
++	mutex_unlock(&chip->audio_mutex);
++	return res;
++}
++
++static int snd_bcm2835_add_chmap_ctl(bcm2835_chip_t * chip)
++{
++	struct snd_pcm_chmap *chmap;
++	struct snd_kcontrol *kctl;
++	int err, i;
++
++	err = snd_pcm_add_chmap_ctls(chip->pcm,
++				     SNDRV_PCM_STREAM_PLAYBACK,
++				     NULL, 8, 0, &chmap);
++	if (err < 0)
++		return err;
++	/* override handlers */
++	chmap->private_data = chip;
++	kctl = chmap->kctl;
++	for (i = 0; i < kctl->count; i++)
++		kctl->vd[i].access |= SNDRV_CTL_ELEM_ACCESS_WRITE;
++	kctl->get = snd_bcm2835_chmap_ctl_get;
++	kctl->put = snd_bcm2835_chmap_ctl_put;
++	kctl->tlv.c = snd_bcm2835_chmap_ctl_tlv;
++	return 0;
++}
++
+ int snd_bcm2835_new_ctl(bcm2835_chip_t * chip)
+ {
+ 	int err;
+@@ -340,6 +638,7 @@ int snd_bcm2835_new_ctl(bcm2835_chip_t * chip)
+ 		if (err < 0)
+ 			return err;
+ 	}
++	snd_bcm2835_add_chmap_ctl(chip);
+ 	for (idx = 0; idx < ARRAY_SIZE(snd_bcm2835_spdif); idx++) {
+ 		err = snd_ctl_add(chip->card,
+ 				snd_ctl_new1(&snd_bcm2835_spdif[idx], chip));
+diff --git a/sound/arm/bcm2835-pcm.c b/sound/arm/bcm2835-pcm.c
+index b6ee027..48da3bb 100755
+--- a/sound/arm/bcm2835-pcm.c
++++ b/sound/arm/bcm2835-pcm.c
+@@ -19,6 +19,9 @@
+ 
+ #include "bcm2835.h"
+ 
++/* The hardware can not do much more num_channels*samplerate then this value */
++#define MAX_COMBINED_RATE 768000
++
+ /* hardware definition */
+ static struct snd_pcm_hardware snd_bcm2835_playback_hw = {
+ 	.info = (SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
+@@ -107,6 +110,31 @@ static irqreturn_t bcm2835_playback_fifo_irq(int irq, void *dev_id)
+ 	return IRQ_HANDLED;
+ }
+ 
++
++static int rate_hw_constraint_rate(struct snd_pcm_hw_params *params,
++				   struct snd_pcm_hw_rule *rule)
++{
++	struct snd_interval *channels = hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS);
++	struct snd_interval rates = {
++		.min = 8000,
++		.max = min(192000u, MAX_COMBINED_RATE / max(channels->min, 1u)),
++	};
++	struct snd_interval *rate = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE);
++	return snd_interval_refine(rate, &rates);
++}
++
++static int rate_hw_constraint_channels(struct snd_pcm_hw_params *params,
++				       struct snd_pcm_hw_rule *rule)
++{
++	struct snd_interval *rate = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE);
++	struct snd_interval channels_interval = {
++		.min = 1,
++		.max = min(8u, MAX_COMBINED_RATE / max(rate->min, 1u)),
++	};
++	struct snd_interval *channels = hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS);
++	return snd_interval_refine(channels, &channels_interval);
++}
++
+ /* open callback */
+ static int snd_bcm2835_playback_open_generic(
+ 		struct snd_pcm_substream *substream, int spdif)
+@@ -188,8 +216,24 @@ static int snd_bcm2835_playback_open_generic(
+ 	snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
+ 				   16);
+ 
++	/* When playing PCM, pretend that we support the full range of channels
++	 * and sample rates. The GPU can't output it, but is able to resample
++	 * the data to a rate the hardware can handle it. This won't work with
++	 * compressed data; the resampler would just destroy it. */
++	if (spdif) {
++		err = snd_pcm_hw_rule_add(runtime, 0, SNDRV_PCM_HW_PARAM_RATE,
++					  rate_hw_constraint_rate, NULL,
++					  SNDRV_PCM_HW_PARAM_CHANNELS, -1);
++		err = snd_pcm_hw_rule_add(runtime, 0, SNDRV_PCM_HW_PARAM_CHANNELS,
++					  rate_hw_constraint_channels, NULL,
++					  SNDRV_PCM_HW_PARAM_RATE, -1);
++	}
++
+ 	chip->alsa_stream[idx] = alsa_stream;
+ 
++	if (!chip->opened)
++		chip->cea_chmap = -1;
++
+ 	chip->opened |= (1 << idx);
+ 	alsa_stream->open = 1;
+ 	alsa_stream->draining = 1;
+@@ -300,8 +344,7 @@ static int snd_bcm2835_pcm_hw_free(struct snd_pcm_substream *substream)
+ 	return snd_pcm_lib_free_pages(substream);
+ }
+ 
+-/* prepare callback */
+-static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
++int snd_bcm2835_pcm_prepare_again(struct snd_pcm_substream *substream)
+ {
+ 	bcm2835_chip_t *chip = snd_pcm_substream_chip(substream);
+ 	struct snd_pcm_runtime *runtime = substream->runtime;
+@@ -309,11 +352,6 @@ static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
+ 	int channels;
+ 	int err;
+ 
+-	audio_info(" .. IN\n");
+-
+-	if (mutex_lock_interruptible(&chip->audio_mutex))
+-		return -EINTR;
+-
+ 	/* notify the vchiq that it should enter spdif passthrough mode by
+ 	 * setting channels=0 (see
+ 	 * https://github.com/raspberrypi/linux/issues/528) */
+@@ -329,6 +367,23 @@ static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
+ 		audio_error(" error setting hw params\n");
+ 	}
+ 
++	return err;
++}
++
++/* prepare callback */
++static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
++{
++	bcm2835_chip_t *chip = snd_pcm_substream_chip(substream);
++	struct snd_pcm_runtime *runtime = substream->runtime;
++	bcm2835_alsa_stream_t *alsa_stream = runtime->private_data;
++
++	audio_info(" .. IN\n");
++
++	if (mutex_lock_interruptible(&chip->audio_mutex))
++		return -EINTR;
++
++	snd_bcm2835_pcm_prepare_again(substream);
++
+ 	bcm2835_audio_setup(alsa_stream);
+ 
+ 	/* in preparation of the stream, set the controls (volume level) of the stream */
+diff --git a/sound/arm/bcm2835-vchiq.c b/sound/arm/bcm2835-vchiq.c
+index 3de3094..8ecd2d7 100755
+--- a/sound/arm/bcm2835-vchiq.c
++++ b/sound/arm/bcm2835-vchiq.c
+@@ -570,6 +570,8 @@ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+ 	VC_AUDIO_MSG_T m;
+ 	AUDIO_INSTANCE_T *instance = alsa_stream->instance;
+ 	int32_t success;
++	uint32_t chmap_value;
++	int i;
+ 	int ret;
+ 	LOG_DBG(" .. IN\n");
+ 
+@@ -593,10 +595,21 @@ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+ 
+ 	instance->result = -1;
+ 
++	if (alsa_stream->chip->cea_chmap >= 0) {
++		chmap_value = (unsigned)alsa_stream->chip->cea_chmap << 24;
++	} else {
++		chmap_value = 0; /* force stereo */
++		for (i = 0; i < 8; i++)
++			alsa_stream->chip->map_channels[i] = i;
++	}
++	for (i = 0; i < 8; i++)
++		chmap_value |= alsa_stream->chip->map_channels[i] << (i * 3);
++
+ 	m.type = VC_AUDIO_MSG_TYPE_CONFIG;
+ 	m.u.config.channels = channels;
+ 	m.u.config.samplerate = samplerate;
+ 	m.u.config.bps = bps;
++	m.u.config.channelmap = chmap_value;
+ 
+ 	/* Create the message available completion */
+ 	init_completion(&instance->msg_avail_comp);
+diff --git a/sound/arm/bcm2835.h b/sound/arm/bcm2835.h
+index 0f71c5d..997fb69 100755
+--- a/sound/arm/bcm2835.h
++++ b/sound/arm/bcm2835.h
+@@ -107,6 +107,8 @@ typedef struct bcm2835_chip {
+ 	int old_volume; /* stores the volume value whist muted */
+ 	int dest;
+ 	int mute;
++	int cea_chmap; /* currently requested Audio InfoFrame Data Byte 4 */
++	int map_channels[8];
+ 
+ 	unsigned int opened;
+ 	unsigned int spdif_status;
+@@ -149,6 +151,8 @@ int snd_bcm2835_new_ctl(bcm2835_chip_t * chip);
+ int snd_bcm2835_new_pcm(bcm2835_chip_t * chip);
+ int snd_bcm2835_new_spdif_pcm(bcm2835_chip_t * chip);
+ 
++int snd_bcm2835_pcm_prepare_again(struct snd_pcm_substream *substream);
++
+ int bcm2835_audio_open(bcm2835_alsa_stream_t * alsa_stream);
+ int bcm2835_audio_close(bcm2835_alsa_stream_t * alsa_stream);
+ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+-- 
+2.8.1
+
+
+From f64ec501c02924876e15cd0ff27d26ec399367c6 Mon Sep 17 00:00:00 2001
+From: wm4 <wm4@nowhere>
+Date: Mon, 11 Jul 2016 14:32:20 +0200
+Subject: [PATCH 3/9] Revert "Revert "bcm2835: always use 2/4/8 channels for
+ multichannel layouts""
+
+This reverts commit 2647516cb8ca22c57be2ab5ab19c39b2244e8f3b.
+---
+ sound/arm/bcm2835-ctl.c | 89 +++++++++++++++++++++++++------------------------
+ 1 file changed, 45 insertions(+), 44 deletions(-)
+
+diff --git a/sound/arm/bcm2835-ctl.c b/sound/arm/bcm2835-ctl.c
+index 5b8e6bd2..dec052b 100755
+--- a/sound/arm/bcm2835-ctl.c
++++ b/sound/arm/bcm2835-ctl.c
+@@ -349,6 +349,7 @@ struct cea_channel_speaker_allocation {
+ #define FRW	SNDRV_CHMAP_FRW
+ #define TC	SNDRV_CHMAP_TC
+ #define FCH	SNDRV_CHMAP_TFC
++#define NA	SNDRV_CHMAP_NA
+ 
+ /*
+  * CEA-861 channel maps
+@@ -356,69 +357,69 @@ struct cea_channel_speaker_allocation {
+  * Stolen from sound/pci/hda/patch_hdmi.c
+  * (unlike the source, this uses SNDRV_* constants directly, as by the
+  *  map_tables array in patch_hdmi.c)
+- * Unknown entries use 0, which unfortunately is SNDRV_CHMAP_UNKNOWN instead
+- * of SNDRV_CHMAP_NA.
++ * Entries which do not have a physical output channel use 0. Entries which
++ * require userspace to output silence use NA (SNDRV_CHMAP_NA).
+  */
+ static struct cea_channel_speaker_allocation channel_allocations[] = {
+ /*			  channel:   7     6    5    4    3     2    1    0  */
+ { .ca_index = 0x00,  .speakers = {   0,    0,   0,   0,   0,    0,  FR,  FL } },
+ 				 /* 2.1 */
+-{ .ca_index = 0x01,  .speakers = {   0,    0,   0,   0,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x01,  .speakers = {   0,    0,   0,   0,  NA,  LFE,  FR,  FL } },
+ 				 /* Dolby Surround */
+-{ .ca_index = 0x02,  .speakers = {   0,    0,   0,   0,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x02,  .speakers = {   0,    0,   0,   0,  FC,   NA,  FR,  FL } },
+ 				 /* surround40 */
+-{ .ca_index = 0x08,  .speakers = {   0,    0,  RR,  RL,   0,    0,  FR,  FL } },
++{ .ca_index = 0x08,  .speakers = {  NA,   NA,  RR,  RL,  NA,   NA,  FR,  FL } },
+ 				 /* surround41 */
+-{ .ca_index = 0x09,  .speakers = {   0,    0,  RR,  RL,   0,  LFE,  FR,  FL } },
++{ .ca_index = 0x09,  .speakers = {  NA,   NA,  RR,  RL,  NA,  LFE,  FR,  FL } },
+ 				 /* surround50 */
+-{ .ca_index = 0x0a,  .speakers = {   0,    0,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x0a,  .speakers = {  NA,   NA,  RR,  RL,  FC,   NA,  FR,  FL } },
+ 				 /* surround51 */
+-{ .ca_index = 0x0b,  .speakers = {   0,    0,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x0b,  .speakers = {  NA,   NA,  RR,  RL,  FC,  LFE,  FR,  FL } },
+ 				 /* 6.1 */
+-{ .ca_index = 0x0f,  .speakers = {   0,   RC,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x0f,  .speakers = {  NA,   RC,  RR,  RL,  FC,  LFE,  FR,  FL } },
+ 				 /* surround71 */
+ { .ca_index = 0x13,  .speakers = { RRC,  RLC,  RR,  RL,  FC,  LFE,  FR,  FL } },
+ 
+-{ .ca_index = 0x03,  .speakers = {   0,    0,   0,   0,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x04,  .speakers = {   0,    0,   0,  RC,   0,    0,  FR,  FL } },
+-{ .ca_index = 0x05,  .speakers = {   0,    0,   0,  RC,   0,  LFE,  FR,  FL } },
+-{ .ca_index = 0x06,  .speakers = {   0,    0,   0,  RC,  FC,    0,  FR,  FL } },
+-{ .ca_index = 0x07,  .speakers = {   0,    0,   0,  RC,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x0c,  .speakers = {   0,   RC,  RR,  RL,   0,    0,  FR,  FL } },
+-{ .ca_index = 0x0d,  .speakers = {   0,   RC,  RR,  RL,   0,  LFE,  FR,  FL } },
+-{ .ca_index = 0x0e,  .speakers = {   0,   RC,  RR,  RL,  FC,    0,  FR,  FL } },
+-{ .ca_index = 0x10,  .speakers = { RRC,  RLC,  RR,  RL,   0,    0,  FR,  FL } },
+-{ .ca_index = 0x11,  .speakers = { RRC,  RLC,  RR,  RL,   0,  LFE,  FR,  FL } },
+-{ .ca_index = 0x12,  .speakers = { RRC,  RLC,  RR,  RL,  FC,    0,  FR,  FL } },
+-{ .ca_index = 0x14,  .speakers = { FRC,  FLC,   0,   0,   0,    0,  FR,  FL } },
+-{ .ca_index = 0x15,  .speakers = { FRC,  FLC,   0,   0,   0,  LFE,  FR,  FL } },
+-{ .ca_index = 0x16,  .speakers = { FRC,  FLC,   0,   0,  FC,    0,  FR,  FL } },
+-{ .ca_index = 0x17,  .speakers = { FRC,  FLC,   0,   0,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x18,  .speakers = { FRC,  FLC,   0,  RC,   0,    0,  FR,  FL } },
+-{ .ca_index = 0x19,  .speakers = { FRC,  FLC,   0,  RC,   0,  LFE,  FR,  FL } },
+-{ .ca_index = 0x1a,  .speakers = { FRC,  FLC,   0,  RC,  FC,    0,  FR,  FL } },
+-{ .ca_index = 0x1b,  .speakers = { FRC,  FLC,   0,  RC,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x1c,  .speakers = { FRC,  FLC,  RR,  RL,   0,    0,  FR,  FL } },
+-{ .ca_index = 0x1d,  .speakers = { FRC,  FLC,  RR,  RL,   0,  LFE,  FR,  FL } },
+-{ .ca_index = 0x1e,  .speakers = { FRC,  FLC,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x03,  .speakers = {  NA,   NA,  NA,  NA,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x04,  .speakers = {  NA,   NA,  NA,  RC,  NA,   NA,  FR,  FL } },
++{ .ca_index = 0x05,  .speakers = {  NA,   NA,  NA,  RC,  NA,  LFE,  FR,  FL } },
++{ .ca_index = 0x06,  .speakers = {  NA,   NA,  NA,  RC,  FC,   NA,  FR,  FL } },
++{ .ca_index = 0x07,  .speakers = {  NA,   NA,  NA,  RC,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x0c,  .speakers = {  NA,   RC,  RR,  RL,  NA,   NA,  FR,  FL } },
++{ .ca_index = 0x0d,  .speakers = {  NA,   RC,  RR,  RL,  NA,  LFE,  FR,  FL } },
++{ .ca_index = 0x0e,  .speakers = {  NA,   RC,  RR,  RL,  FC,   NA,  FR,  FL } },
++{ .ca_index = 0x10,  .speakers = { RRC,  RLC,  RR,  RL,  NA,   NA,  FR,  FL } },
++{ .ca_index = 0x11,  .speakers = { RRC,  RLC,  RR,  RL,  NA,  LFE,  FR,  FL } },
++{ .ca_index = 0x12,  .speakers = { RRC,  RLC,  RR,  RL,  FC,   NA,  FR,  FL } },
++{ .ca_index = 0x14,  .speakers = { FRC,  FLC,  NA,  NA,  NA,   NA,  FR,  FL } },
++{ .ca_index = 0x15,  .speakers = { FRC,  FLC,  NA,  NA,  NA,  LFE,  FR,  FL } },
++{ .ca_index = 0x16,  .speakers = { FRC,  FLC,  NA,  NA,  FC,   NA,  FR,  FL } },
++{ .ca_index = 0x17,  .speakers = { FRC,  FLC,  NA,  NA,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x18,  .speakers = { FRC,  FLC,  NA,  RC,  NA,   NA,  FR,  FL } },
++{ .ca_index = 0x19,  .speakers = { FRC,  FLC,  NA,  RC,  NA,  LFE,  FR,  FL } },
++{ .ca_index = 0x1a,  .speakers = { FRC,  FLC,  NA,  RC,  FC,   NA,  FR,  FL } },
++{ .ca_index = 0x1b,  .speakers = { FRC,  FLC,  NA,  RC,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x1c,  .speakers = { FRC,  FLC,  RR,  RL,  NA,   NA,  FR,  FL } },
++{ .ca_index = 0x1d,  .speakers = { FRC,  FLC,  RR,  RL,  NA,  LFE,  FR,  FL } },
++{ .ca_index = 0x1e,  .speakers = { FRC,  FLC,  RR,  RL,  FC,   NA,  FR,  FL } },
+ { .ca_index = 0x1f,  .speakers = { FRC,  FLC,  RR,  RL,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x20,  .speakers = {   0,  FCH,  RR,  RL,  FC,    0,  FR,  FL } },
+-{ .ca_index = 0x21,  .speakers = {   0,  FCH,  RR,  RL,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x22,  .speakers = {  TC,    0,  RR,  RL,  FC,    0,  FR,  FL } },
+-{ .ca_index = 0x23,  .speakers = {  TC,    0,  RR,  RL,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x24,  .speakers = { FRH,  FLH,  RR,  RL,   0,    0,  FR,  FL } },
+-{ .ca_index = 0x25,  .speakers = { FRH,  FLH,  RR,  RL,   0,  LFE,  FR,  FL } },
+-{ .ca_index = 0x26,  .speakers = { FRW,  FLW,  RR,  RL,   0,    0,  FR,  FL } },
+-{ .ca_index = 0x27,  .speakers = { FRW,  FLW,  RR,  RL,   0,  LFE,  FR,  FL } },
+-{ .ca_index = 0x28,  .speakers = {  TC,   RC,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x20,  .speakers = {  NA,  FCH,  RR,  RL,  FC,   NA,  FR,  FL } },
++{ .ca_index = 0x21,  .speakers = {  NA,  FCH,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x22,  .speakers = {  TC,   NA,  RR,  RL,  FC,   NA,  FR,  FL } },
++{ .ca_index = 0x23,  .speakers = {  TC,   NA,  RR,  RL,  FC,  LFE,  FR,  FL } },
++{ .ca_index = 0x24,  .speakers = { FRH,  FLH,  RR,  RL,  NA,   NA,  FR,  FL } },
++{ .ca_index = 0x25,  .speakers = { FRH,  FLH,  RR,  RL,  NA,  LFE,  FR,  FL } },
++{ .ca_index = 0x26,  .speakers = { FRW,  FLW,  RR,  RL,  NA,   NA,  FR,  FL } },
++{ .ca_index = 0x27,  .speakers = { FRW,  FLW,  RR,  RL,  NA,  LFE,  FR,  FL } },
++{ .ca_index = 0x28,  .speakers = {  TC,   RC,  RR,  RL,  FC,   NA,  FR,  FL } },
+ { .ca_index = 0x29,  .speakers = {  TC,   RC,  RR,  RL,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x2a,  .speakers = { FCH,   RC,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x2a,  .speakers = { FCH,   RC,  RR,  RL,  FC,   NA,  FR,  FL } },
+ { .ca_index = 0x2b,  .speakers = { FCH,   RC,  RR,  RL,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x2c,  .speakers = {  TC,  FCH,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x2c,  .speakers = {  TC,  FCH,  RR,  RL,  FC,   NA,  FR,  FL } },
+ { .ca_index = 0x2d,  .speakers = {  TC,  FCH,  RR,  RL,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x2e,  .speakers = { FRH,  FLH,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x2e,  .speakers = { FRH,  FLH,  RR,  RL,  FC,   NA,  FR,  FL } },
+ { .ca_index = 0x2f,  .speakers = { FRH,  FLH,  RR,  RL,  FC,  LFE,  FR,  FL } },
+-{ .ca_index = 0x30,  .speakers = { FRW,  FLW,  RR,  RL,  FC,    0,  FR,  FL } },
++{ .ca_index = 0x30,  .speakers = { FRW,  FLW,  RR,  RL,  FC,   NA,  FR,  FL } },
+ { .ca_index = 0x31,  .speakers = { FRW,  FLW,  RR,  RL,  FC,  LFE,  FR,  FL } },
+ };
+ 
+-- 
+2.8.1
+
+
+From 62b2c58ed0e998057b8df6db5db821a4a487e81b Mon Sep 17 00:00:00 2001
+From: wm4 <wm4@nowhere>
+Date: Mon, 11 Jul 2016 14:32:28 +0200
+Subject: [PATCH 4/9] Revert "Revert "bcm2835: only allow stereo if analogue
+ jack is selected""
+
+This reverts commit f3233e98fa665b9f51388975720ae14539858172.
+---
+ sound/arm/bcm2835-ctl.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/sound/arm/bcm2835-ctl.c b/sound/arm/bcm2835-ctl.c
+index dec052b..e930718 100755
+--- a/sound/arm/bcm2835-ctl.c
++++ b/sound/arm/bcm2835-ctl.c
+@@ -423,9 +423,16 @@ static struct cea_channel_speaker_allocation channel_allocations[] = {
+ { .ca_index = 0x31,  .speakers = { FRW,  FLW,  RR,  RL,  FC,  LFE,  FR,  FL } },
+ };
+ 
++static int uses_analogue(bcm2835_chip_t *chip)
++{
++	return chip->dest == 1;
++}
++
+ static int snd_bcm2835_chmap_ctl_tlv(struct snd_kcontrol *kcontrol, int op_flag,
+ 				     unsigned int size, unsigned int __user *tlv)
+ {
++	struct snd_pcm_chmap *info = snd_kcontrol_chip(kcontrol);
++	bcm2835_chip_t *chip = info->private_data;
+ 	unsigned int __user *dst;
+ 	int count = 0;
+ 	int i;
+@@ -442,6 +449,9 @@ static int snd_bcm2835_chmap_ctl_tlv(struct snd_kcontrol *kcontrol, int op_flag,
+ 		int chs_bytes;
+ 		int c;
+ 
++		if (i > 0 && uses_analogue(chip))
++			break;
++
+ 		for (c = 0; c < 8; c++) {
+ 			if (ch->speakers[c])
+ 				num_chs++;
+@@ -552,6 +562,8 @@ static int snd_bcm2835_chmap_ctl_put(struct snd_kcontrol *kcontrol,
+ 		int matches = 1;
+ 		int cur = 0;
+ 		int x;
++		if (i > 0 && uses_analogue(chip))
++			break;
+ 		memset(remap, 0, sizeof(remap));
+ 		for (x = 0; x < substream->runtime->channels; x++) {
+ 			int sp = ucontrol->value.integer.value[x];
+-- 
+2.8.1
+
+
+From d8bda7943b1d85cdc7655a3d2f4d99742463ef12 Mon Sep 17 00:00:00 2001
+From: wm4 <wm4@nowhere>
+Date: Mon, 11 Jul 2016 14:32:35 +0200
+Subject: [PATCH 5/9] Revert "Revert "bcm2835: interpolate audio delay""
+
+This reverts commit 878768ff18492c4b5806ba6a5e7a78219f7048a7.
+---
+ sound/arm/bcm2835-pcm.c | 12 +++++++++++-
+ sound/arm/bcm2835.h     |  1 +
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/sound/arm/bcm2835-pcm.c b/sound/arm/bcm2835-pcm.c
+index 48da3bb..f3a4c6d 100755
+--- a/sound/arm/bcm2835-pcm.c
++++ b/sound/arm/bcm2835-pcm.c
+@@ -25,7 +25,7 @@
+ /* hardware definition */
+ static struct snd_pcm_hardware snd_bcm2835_playback_hw = {
+ 	.info = (SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
+-		 SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID),
++		 SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_BATCH),
+ 	.formats = SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+ 	.rates = SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+ 	.rate_min = 8000,
+@@ -99,6 +99,8 @@ static irqreturn_t bcm2835_playback_fifo_irq(int irq, void *dev_id)
+ 		alsa_stream->pos %= alsa_stream->buffer_size;
+ 	}
+ 
++	alsa_stream->interpolate_start = ktime_get_ns();
++
+ 	if (alsa_stream->substream) {
+ 		if (new_period)
+ 			snd_pcm_period_elapsed(alsa_stream->substream);
+@@ -399,6 +401,7 @@ static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
+ 	alsa_stream->buffer_size = snd_pcm_lib_buffer_bytes(substream);
+ 	alsa_stream->period_size = snd_pcm_lib_period_bytes(substream);
+ 	alsa_stream->pos = 0;
++	alsa_stream->interpolate_start = ktime_get_ns();
+ 
+ 	audio_debug("buffer_size=%d, period_size=%d pos=%d frame_bits=%d\n",
+ 		      alsa_stream->buffer_size, alsa_stream->period_size,
+@@ -495,6 +498,7 @@ snd_bcm2835_pcm_pointer(struct snd_pcm_substream *substream)
+ {
+ 	struct snd_pcm_runtime *runtime = substream->runtime;
+ 	bcm2835_alsa_stream_t *alsa_stream = runtime->private_data;
++	u64 now = ktime_get_ns();
+ 
+ 	audio_info(" .. IN\n");
+ 
+@@ -503,6 +507,12 @@ snd_bcm2835_pcm_pointer(struct snd_pcm_substream *substream)
+ 		      frames_to_bytes(runtime, runtime->control->appl_ptr),
+ 		      alsa_stream->pos);
+ 
++	/* Give userspace better delay reporting by interpolating between GPU
++	 * notifications, assuming audio speed is close enough to the clock
++	 * used for ktime */
++	if (alsa_stream->interpolate_start && alsa_stream->interpolate_start < now)
++		runtime->delay = -(int)div_u64((now - alsa_stream->interpolate_start) * runtime->rate,  1000000000);
++
+ 	audio_info(" .. OUT\n");
+ 	return snd_pcm_indirect_playback_pointer(substream,
+ 						 &alsa_stream->pcm_indirect,
+diff --git a/sound/arm/bcm2835.h b/sound/arm/bcm2835.h
+index 997fb69..20ef108 100755
+--- a/sound/arm/bcm2835.h
++++ b/sound/arm/bcm2835.h
+@@ -137,6 +137,7 @@ typedef struct bcm2835_alsa_stream {
+ 	unsigned int pos;
+ 	unsigned int buffer_size;
+ 	unsigned int period_size;
++	u64 interpolate_start;
+ 
+ 	uint32_t enable_fifo_irq;
+ 	irq_handler_t fifo_irq_handler;
+-- 
+2.8.1
+
+
+From b0a3b315ba685d4ee4496cf74508a5f81f921341 Mon Sep 17 00:00:00 2001
+From: wm4 <wm4@nowhere>
+Date: Mon, 11 Jul 2016 14:32:42 +0200
+Subject: [PATCH 6/9] Revert "Revert "bcm2835: do not require substream for
+ accessing chmap ctl""
+
+This reverts commit 74cb75f5f268acafd906f2534158d36aa978581c.
+---
+ sound/arm/bcm2835-ctl.c | 10 +---------
+ 1 file changed, 1 insertion(+), 9 deletions(-)
+
+diff --git a/sound/arm/bcm2835-ctl.c b/sound/arm/bcm2835-ctl.c
+index e930718..8b855f9 100755
+--- a/sound/arm/bcm2835-ctl.c
++++ b/sound/arm/bcm2835-ctl.c
+@@ -489,8 +489,6 @@ static int snd_bcm2835_chmap_ctl_get(struct snd_kcontrol *kcontrol,
+ {
+ 	struct snd_pcm_chmap *info = snd_kcontrol_chip(kcontrol);
+ 	bcm2835_chip_t *chip = info->private_data;
+-	unsigned int idx = snd_ctl_get_ioffidx(kcontrol, &ucontrol->id);
+-	struct snd_pcm_substream *substream = snd_pcm_chmap_substream(info, idx);
+ 	struct cea_channel_speaker_allocation *ch = NULL;
+ 	int res = 0;
+ 	int cur = 0;
+@@ -499,11 +497,6 @@ static int snd_bcm2835_chmap_ctl_get(struct snd_kcontrol *kcontrol,
+ 	if (mutex_lock_interruptible(&chip->audio_mutex))
+ 		return -EINTR;
+ 
+-	if (!substream || !substream->runtime) {
+-		res = -ENODEV;
+-		goto unlock;
+-	}
+-
+ 	for (i = 0; i < ARRAY_SIZE(channel_allocations); i++) {
+ 		if (channel_allocations[i].ca_index == chip->cea_chmap)
+ 			ch = &channel_allocations[i];
+@@ -521,7 +514,6 @@ static int snd_bcm2835_chmap_ctl_get(struct snd_kcontrol *kcontrol,
+ 	while (cur < 8)
+ 		ucontrol->value.integer.value[cur++] = SNDRV_CHMAP_NA;
+ 
+-unlock:
+ 	mutex_unlock(&chip->audio_mutex);
+ 	return res;
+ }
+@@ -541,7 +533,7 @@ static int snd_bcm2835_chmap_ctl_put(struct snd_kcontrol *kcontrol,
+ 		return -EINTR;
+ 
+ 	if (!substream || !substream->runtime) {
+-		res = -ENODEV;
++		/* ignore and return success for the sake of alsactl */
+ 		goto unlock;
+ 	}
+ 
+-- 
+2.8.1
+
+
+From 47d7eebdd9964474f412032d481177d433bf74f5 Mon Sep 17 00:00:00 2001
+From: wm4 <wm4@nowhere>
+Date: Mon, 11 Jul 2016 14:32:52 +0200
+Subject: [PATCH 7/9] Revert "Revert "bcm2835: add fallback channel layouts if
+ channel map API is not used""
+
+This reverts commit f13aa125e0f70d6fb0b11f023108e0e438fb6b12.
+---
+ sound/arm/bcm2835-vchiq.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/sound/arm/bcm2835-vchiq.c b/sound/arm/bcm2835-vchiq.c
+index 8ecd2d7..9371073 100755
+--- a/sound/arm/bcm2835-vchiq.c
++++ b/sound/arm/bcm2835-vchiq.c
+@@ -598,7 +598,16 @@ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+ 	if (alsa_stream->chip->cea_chmap >= 0) {
+ 		chmap_value = (unsigned)alsa_stream->chip->cea_chmap << 24;
+ 	} else {
+-		chmap_value = 0; /* force stereo */
++		/* fallback layouts for applications which do not use chmap API */
++		chmap_value = 0x00;
++		switch (channels) {
++		case 3: chmap_value = 0x01; break;
++		case 4: chmap_value = 0x03; break;
++		case 5: chmap_value = 0x07; break;
++		case 6: chmap_value = 0x0b; break;
++		case 7: chmap_value = 0x0f; break;
++		case 8: chmap_value = 0x13; break;
++		}
+ 		for (i = 0; i < 8; i++)
+ 			alsa_stream->chip->map_channels[i] = i;
+ 	}
+-- 
+2.8.1
+
+
+From 05d2e116db2756a68a400f2e6794fb920a46030a Mon Sep 17 00:00:00 2001
+From: wm4 <wm4@nowhere>
+Date: Mon, 11 Jul 2016 14:33:02 +0200
+Subject: [PATCH 8/9] Revert "Revert "bcm2835: log which channel map is set""
+
+This reverts commit fa451628c88092a3bcaa77d16d2f94f1f45f3bf1.
+---
+ sound/arm/bcm2835-vchiq.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/sound/arm/bcm2835-vchiq.c b/sound/arm/bcm2835-vchiq.c
+index 9371073..876986d 100755
+--- a/sound/arm/bcm2835-vchiq.c
++++ b/sound/arm/bcm2835-vchiq.c
+@@ -596,8 +596,11 @@ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+ 	instance->result = -1;
+ 
+ 	if (alsa_stream->chip->cea_chmap >= 0) {
++		LOG_INFO("Using application requested channel map: %d\n",
++			 alsa_stream->chip->cea_chmap);
+ 		chmap_value = (unsigned)alsa_stream->chip->cea_chmap << 24;
+ 	} else {
++		LOG_INFO("Using fallback channel map.\n");
+ 		/* fallback layouts for applications which do not use chmap API */
+ 		chmap_value = 0x00;
+ 		switch (channels) {
+@@ -614,6 +617,8 @@ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+ 	for (i = 0; i < 8; i++)
+ 		chmap_value |= alsa_stream->chip->map_channels[i] << (i * 3);
+ 
++	LOG_INFO("Requesting AUDS channel map: 0x%lx\n", (long)chmap_value);
++
+ 	m.type = VC_AUDIO_MSG_TYPE_CONFIG;
+ 	m.u.config.channels = channels;
+ 	m.u.config.samplerate = samplerate;
+-- 
+2.8.1
+
+
+From e3f41f70f00c442ab7ec11fc72a16bb7cc163160 Mon Sep 17 00:00:00 2001
+From: wm4 <wm4@nowhere>
+Date: Mon, 11 Jul 2016 15:28:31 +0200
+Subject: [PATCH 9/9] Revert "Revert "rpi: update vc_vchi_audioserv_defs.h""
+
+This reverts commit 8a9a5d4b0461dd39a39b4fe255e47281eb5af454.
+---
+ sound/arm/vc_vchi_audioserv_defs.h | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/sound/arm/vc_vchi_audioserv_defs.h b/sound/arm/vc_vchi_audioserv_defs.h
+index af3e6eb..5f4409f 100644
+--- a/sound/arm/vc_vchi_audioserv_defs.h
++++ b/sound/arm/vc_vchi_audioserv_defs.h
+@@ -16,7 +16,7 @@
+ #define _VC_AUDIO_DEFS_H_
+ 
+ #define VC_AUDIOSERV_MIN_VER 1
+-#define VC_AUDIOSERV_VER 2
++#define VC_AUDIOSERV_VER 3
+ 
+ // FourCC code used for VCHI connection
+ #define VC_AUDIO_SERVER_NAME  MAKE_FOURCC("AUDS")
+@@ -36,6 +36,7 @@ typedef enum {
+ 	VC_AUDIO_MSG_TYPE_START,	// Configure audio
+ 	VC_AUDIO_MSG_TYPE_STOP,	// Configure audio
+ 	VC_AUDIO_MSG_TYPE_WRITE,	// Configure audio
++	VC_AUDIO_MSG_TYPE_LATENCY,	// request latency in cycles
+ 	VC_AUDIO_MSG_TYPE_MAX
+ } VC_AUDIO_MSG_TYPE;
+ 
+@@ -44,6 +45,7 @@ typedef struct {
+ 	uint32_t channels;
+ 	uint32_t samplerate;
+ 	uint32_t bps;
++	uint32_t channelmap;
+ 
+ } VC_AUDIO_CONFIG_T;
+ 
+@@ -84,6 +86,12 @@ typedef struct {
+ 	uint16_t max_packet;
+ } VC_AUDIO_WRITE_T;
+ 
++// query latency in samples of sink
++typedef struct
++{
++	uint32_t dummy;
++} VC_AUDIO_LATENCY_T;
++
+ // Generic result for a request (VC->HOST)
+ typedef struct {
+ 	int32_t success;	// Success value
+@@ -108,9 +116,10 @@ typedef struct {
+ 		VC_AUDIO_START_T start;
+ 		VC_AUDIO_STOP_T stop;
+ 		VC_AUDIO_WRITE_T write;
++		VC_AUDIO_LATENCY_T latency;
+ 		VC_AUDIO_RESULT_T result;
+ 		VC_AUDIO_COMPLETE_T complete;
+ 	} u;
+ } VC_AUDIO_MSG_T;
+ 
+-#endif // _VC_AUDIO_DEFS_H_
++#endif // _VC_AUDIO_DEFS_H_
+\ No newline at end of file
+-- 
+2.8.1
+
+
