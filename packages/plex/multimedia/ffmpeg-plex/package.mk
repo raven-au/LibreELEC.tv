@@ -40,8 +40,23 @@ get_graphicdrivers
 # if we want to
 DEBUG=$PLEX_DEBUG
 
+case $PROJECT in
+  WeTek_Hub|Odroid_C2)
+    PKG_DEPENDS_TARGET="${PKG_DEPENDS_TARGET} libamcodec"
+    PKG_VERSION="amlvideo"
+  ;;
+esac
+
 unpack() {
-  git clone --depth 1 -b $PKG_VERSION git@github.com:wm4/FFmpeg.git $BUILD/${PKG_NAME}-${PKG_VERSION}
+  case $PROJECT in
+    WeTek_Hub|Odroid_C2)
+      git clone -b $PKG_VERSION git@github.com:LongChair/FFmpeg.git $BUILD/${PKG_NAME}-${PKG_VERSION}
+    ;;
+
+    *)
+      git clone --depth 1 -b $PKG_VERSION git@github.com:wm4/FFmpeg.git $BUILD/${PKG_NAME}-${PKG_VERSION}
+    ;;
+  esac
 }
 
 if [ "$VAAPI_SUPPORT" = yes ]; then
@@ -161,6 +176,7 @@ configure_target() {
               $FFMPEG_CPU \
               $FFMPEG_FPU \
               --disable-symver \
+              --enable-aml \
               $FFMPEG_MMAL
 }
 
