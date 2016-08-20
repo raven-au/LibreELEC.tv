@@ -57,7 +57,7 @@ unpack() {
   mkdir $BUILD/${PKG_NAME}-${PKG_VERSION}
   git clone -b $PKG_VERSION git@github.com:LongChair/mpv.git $BUILD/${PKG_NAME}-${PKG_VERSION}/.
   case $PROJECT in
-    RPi|RPi2|Odroid_C2)
+    RPi|RPi2|Odroid_C2|WeTek_Hub)
       # Before changing the subtitle renderer to EGL/GLES
       # These are needed on RPI only. Without, RPI output support
       # will not be compiled.
