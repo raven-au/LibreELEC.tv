@@ -24,7 +24,7 @@ PKG_ARCH="any"
 PKG_LICENSE="GPL"
 PKG_SITE="https://nightlies.plex.tv"
 PKG_URL="$PKG_SITE/directdl/plex-oe-sources/$PKG_NAME-dummy.tar.gz"
-PKG_DEPENDS_TARGET="toolchain systemd fontconfig qt5 libcec mpv SDL2 libXdmcp breakpad breakpad:host libconnman-qt ${MEDIACENTER,,}-fonts-ttf  fc-cache"
+PKG_DEPENDS_TARGET="toolchain systemd fontconfig qt5 libcec SDL2 libXdmcp breakpad breakpad:host libconnman-qt ${MEDIACENTER,,}-fonts-ttf  fc-cache"
 PKG_DEPENDS_HOST="toolchain"
 PKG_PRIORITY="optional"
 PKG_SECTION="mediacenter"
@@ -56,6 +56,17 @@ fi
 # if we want to
 DEBUG=$PLEX_DEBUG
 
+# Temporarilly use an alternal branch for mpv on AML 
+case $PROJECT in 
+   WeTek_Hub|Odroid_C2)
+     PKG_DEPENDS_TARGET="${PKG_DEPENDS_TARGET} mpv-aml"
+   ;;
+
+   *)
+    PKG_DEPENDS_TARGET="${PKG_DEPENDS_TARGET} mpv"
+   ;;
+esac
+
 unpack() {
   if [ -d $BUILD/${PKG_NAME}-${PKG_VERSION} ]; then
     cd $BUILD/${PKG_NAME}-${PKG_VERSION} ; rm -rf build
@@ -66,6 +77,10 @@ unpack() {
   fi
 
   cd ${ROOT}	
+}
+
+pre_configure_target() {
+    strip_lto
 }
 
 configure_target() {
@@ -157,6 +172,11 @@ CMAKE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/usr \
     RPi|RPi2)
       CMAKE_OPTIONS+=" -DBUILD_TARGET=RPI"
       echo "set(BUILD_TARGET \"RPI\")" >> $ROOT/$PKG_BUILD/toolchain.cmake
+    ;;
+
+    Wetek_Hub|Odroid_C2)
+      CMAKE_OPTIONS+=" -DBUILD_TARGET=AML"
+      echo "set(BUILD_TARGET \"AML\")" >> $ROOT/$PKG_BUILD/toolchain.cmake
     ;;
   esac
 
