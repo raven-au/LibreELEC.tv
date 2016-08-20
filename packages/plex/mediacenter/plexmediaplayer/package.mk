@@ -79,6 +79,10 @@ configure_target() {
     RPi|RPi2)
       PMP_BUILD_TARGET="RPI"
     ;;
+
+    WeTek_Hub|Odroid_C2)
+      PMP_BUILD_TARGET="AML"
+    ;;
   esac
 
   # Create seperate config build dir to not work in the github tree
