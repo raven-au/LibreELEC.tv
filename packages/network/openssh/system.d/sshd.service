@@ -2,14 +2,11 @@
 Description=OpenSSH server daemon
 ConditionKernelCommandLine=|ssh
 ### PLEX
-#ConditionPathExists=|/storage/.cache/services/sshd.conf
+ConditionPathExists=|/usr/share/sshd.conf
 ### END PLEX
 
 [Service]
 Restart=on-failure
-### PLEX
-ExecStartPre=touch /storage/.cache/services/sshd.conf
-### END PLEX
 EnvironmentFile=-/storage/.cache/services/sshd.conf
 ExecStartPre=/usr/bin/ssh-keygen -A
 ExecStart=/usr/sbin/sshd -D $SSH_ARGS
