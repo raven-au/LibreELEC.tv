@@ -1,0 +1,11 @@
+--- a/src/fccache.c	2016-05-30 03:30:10.000000000 +0200
++++ b/src/fccache.c	2016-08-24 08:39:15.456000000 +0200
+@@ -584,7 +584,7 @@
+ 		FcCacheDir (cache), cache->checksum, (int) dir_stat->st_mtime);
+ #endif
+ 
+-    return cache->checksum == (int) dir_stat->st_mtime && fnano;
++    return FcTrue;
+ }
+ 
+ /*
