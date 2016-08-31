@@ -24,7 +24,7 @@ PKG_ARCH="any"
 PKG_LICENSE="GPL"
 PKG_SITE="https://nightlies.plex.tv"
 PKG_URL="$PKG_SITE/directdl/plex-oe-sources/$PKG_NAME-dummy.tar.gz"
-PKG_DEPENDS_TARGET="toolchain systemd fontconfig qt5 libcec SDL2 libXdmcp breakpad breakpad:host libconnman-qt ${MEDIACENTER,,}-fonts-ttf  fc-cache"
+PKG_DEPENDS_TARGET="toolchain systemd fontconfig qt5 libcec SDL2 libXdmcp breakpad breakpad:host libconnman-qt ${MEDIACENTER,,}-fonts-ttf  fc-cache mpv"
 PKG_DEPENDS_HOST="toolchain"
 PKG_PRIORITY="optional"
 PKG_SECTION="mediacenter"
@@ -55,17 +55,6 @@ fi
 # generate debug symbols for this package
 # if we want to
 DEBUG=$PLEX_DEBUG
-
-# Temporarilly use an alternal branch for mpv on AML 
-case $PROJECT in 
-   WeTek_Hub|Odroid_C2)
-     PKG_DEPENDS_TARGET="${PKG_DEPENDS_TARGET} mpv-aml"
-   ;;
-
-   *)
-    PKG_DEPENDS_TARGET="${PKG_DEPENDS_TARGET} mpv"
-   ;;
-esac
 
 unpack() {
   if [ -d $BUILD/${PKG_NAME}-${PKG_VERSION} ]; then
