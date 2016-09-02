@@ -1,0 +1,10 @@
+[Unit]
+Description=Plex Media Player - Pre Network setup
+Before=network.target
+
+[Service]
+ExecStartPre=/bin/sh -c "if [ ! -f /storage/.cache/services/samba.conf ]; then exec cp /etc/samba/smb.conf /storage/.cache/services/samba.conf; fi"
+ExecStart=/bin/sh -c "echo Setting up PMP required configs "
+
+[Install]
+WantedBy=plex.target
