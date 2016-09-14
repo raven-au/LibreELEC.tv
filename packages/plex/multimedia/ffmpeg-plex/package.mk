@@ -113,6 +113,10 @@ case $PROJECT in
     FFMPEG_MMAL="--enable-mmal"
     PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET bcm2835-driver"
   ;;
+
+  WeTek_Hub|Odroid_C2)
+    FFMPEG_AML="--enable-aml"
+  ;;
 esac
 
 pre_configure_target() {
@@ -176,7 +180,7 @@ configure_target() {
               $FFMPEG_CPU \
               $FFMPEG_FPU \
               --disable-symver \
-              --enable-aml \
+              $FFMPEG_AML \
               $FFMPEG_MMAL
 }
 
