@@ -205,6 +205,7 @@ post_install() {
   enable_service plex.service
   enable_service plex.target
   enable_service plex-waitonnetwork.service
+  enable_service plex-prenetwork.service
 
   #echo "Generating pre-fontcache"
   export FONTCONFIG_FILE=$ROOT/$BUILD/image/system/etc/fonts/fonts.conf
