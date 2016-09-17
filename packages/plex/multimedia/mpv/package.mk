@@ -37,7 +37,7 @@ PKG_CONFIGURE_OPTS_TARGET="--enable-libmpv-shared --disable-libsmbclient --disab
 # Temporarilly use another branch & repo for AML devices
 case $PROJECT in
     WeTek_Hub|Odroid_C2)
-        PKG_VERSION="amlvideo"
+        PKG_VERSION="aml"
     ;;
 esac
 
@@ -63,15 +63,8 @@ fi
 
 unpack() {
   mkdir $BUILD/${PKG_NAME}-${PKG_VERSION}
-  case $PROJECT in
-    WeTek_Hub|Odroid_C2)
-      git clone -b $PKG_VERSION git@github.com:LongChair/mpv.git $BUILD/${PKG_NAME}-${PKG_VERSION}/.
-    ;;
-
-    *)
-      git clone --depth 1 -b $PKG_VERSION git@github.com:wm4/mpv.git $BUILD/${PKG_NAME}-${PKG_VERSION}/.
-    ;;
-  esac
+  
+  git clone -b $PKG_VERSION git@github.com:wm4/mpv.git $BUILD/${PKG_NAME}-${PKG_VERSION}/.
 
   case $PROJECT in
     RPi|RPi2|Odroid_C2|WeTek_Hub)
