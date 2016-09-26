@@ -207,6 +207,9 @@ post_install() {
   enable_service plex-waitonnetwork.service
   enable_service plex-prenetwork.service
 
+  #copy out network wait file 
+  cp $PKG_DIR/system.d/network_wait $INSTALL/usr/share/plexmediaplayer/
+
   #echo "Generating pre-fontcache"
   export FONTCONFIG_FILE=$ROOT/$BUILD/image/system/etc/fonts/fonts.conf
   $ROOT/$TOOLCHAIN/bin/fc-cache -fv  -y ${ROOT}/${BUILD}/image/system /usr/share/fonts

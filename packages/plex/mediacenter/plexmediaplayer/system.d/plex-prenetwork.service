@@ -3,6 +3,7 @@ Description=Plex Media Player - Pre Network setup
 Before=network.target
 
 [Service]
+ExecStartPre=/bin/sh -c "if [ ! -d /storage/.cache/libreelec ]; then mkdir /storage/.cache/libreelec; fi; if [ ! -f /storage/.cache/libreelec/network_wait ]; then cp /usr/share/plexmediaplayer/network_wait /storage/.cache/libreelec/network_wait; fi"
 ExecStartPre=/bin/sh -c "if [ ! -f /storage/.cache/services/samba.conf ]; then exec cp /etc/samba/smb.conf /storage/.cache/services/samba.conf; fi"
 ExecStart=/bin/sh -c "echo Setting up PMP required configs "
 
