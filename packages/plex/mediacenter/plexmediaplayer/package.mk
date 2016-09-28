@@ -24,7 +24,7 @@ PKG_ARCH="any"
 PKG_LICENSE="GPL"
 PKG_SITE="https://nightlies.plex.tv"
 PKG_URL="$PKG_SITE/directdl/plex-oe-sources/$PKG_NAME-dummy.tar.gz"
-PKG_DEPENDS_TARGET="toolchain systemd fontconfig qt5 libcec SDL2 libXdmcp breakpad breakpad:host libconnman-qt ${MEDIACENTER,,}-fonts-ttf  fc-cache mpv"
+PKG_DEPENDS_TARGET="toolchain systemd fontconfig qt5 libcec SDL2 libXdmcp breakpad breakpad:host samba libconnman-qt ${MEDIACENTER,,}-fonts-ttf  fc-cache mpv"
 PKG_DEPENDS_HOST="toolchain"
 PKG_PRIORITY="optional"
 PKG_SECTION="mediacenter"
@@ -34,27 +34,58 @@ PKG_LONGDESC="Plex is the king or PC clients for Plex :P"
 PKG_IS_ADDON="no"
 PKG_AUTORECONF="no"
 
-if [ "$KODI_SAMBA_SUPPORT" = yes ]; then
-  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET samba"
-fi
-
-#add gdb tools if we are in debug
-if [ "$PLEX_DEBUG" = yes ]; then
-  PKG_DEPENDS_TARGET="${PKG_DEPENDS_TARGET} gdb"
-fi
-
-if [ ! -z "$CI_CRASHDUMP_SECRET" ]; then
-  CRASHDUMP_SECRET="-DCRASHDUMP_SECRET=${CI_CRASHDUMP_SECRET}"
-fi
-
 # Add eventual X11 additionnal deps
 if [ "$DISPLAYSERVER" = "x11" ]; then
   PKG_DEPENDS_TARGET+=" libX11 xrandr"
 fi
 
+# Cod Options
+if [ "${CODECS}" = "yes" ]; then
+  COD_OPTIONS_ENABLE="on"
+  COD_OPTIONS_DEPFOLDER="plexmediaplayer-openelec-codecs"
+  COD_DISABLE_BUNDLE_DEPS="off"
+else
+  COD_OPTIONS_ENABLE="off"
+  COD_DISABLE_BUNDLE_DEPS="on"
+fi
+
+# define build type 
+if [ "$PLEX_DEBUG" = yes ]; then
+  BUILD_TYPE="debug"
+else
+  BUILD_TYPE="RelWithDebInfo"
+fi
+
+# define target type if needed
+case $PROJECT in
+  RPi|RPi2)
+    PMP_BUILD_TARGET="RPI"
+  ;;
+
+  WeTek_Hub|Odroid_C2)
+    PMP_BUILD_TARGET="AML"
+  ;;
+esac
+
 # generate debug symbols for this package
 # if we want to
 DEBUG=$PLEX_DEBUG
+
+# define package cmake
+PKG_CMAKE_OPTS_TARGET="-DCMAKE_INSTALL_PREFIX=/usr \
+		       -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+		       -DQTROOT=${SYSROOT_PREFIX}/usr/local/qt5 \
+		       -DOPENELEC=on \
+		       -DBUILD_TARGET=${PMP_BUILD_TARGET} \
+		       -DENABLE_CODECS=${COD_OPTIONS_ENABLE} \
+		       -DOE_ARCH=${PLEX_CODEC_ARCH} \
+		       -DDEPENDCY_FOLDER=${COD_OPTIONS_DEPFOLDER} \
+		       -DDISABLE_BUNDLED_DEPS=${COD_DISABLE_BUNDLE_DEPS} \
+		       -DDEPENDENCY_TOKEN=${DEPENDENCY_TOKEN} \
+		       -DCRASHDUMP_SECRET=${CI_CRASHDUMP_SECRET}"
+
+#we don't want lto
+strip_lto
 
 unpack() {
   if [ -d $BUILD/${PKG_NAME}-${PKG_VERSION} ]; then
@@ -68,76 +99,13 @@ unpack() {
   cd ${ROOT}	
 }
 
-pre_configure_target() {
-    strip_lto
+pre_install()
+{
+ deploy_symbols
 }
 
-configure_target() {
-  cd ${ROOT}/${BUILD}/${PKG_NAME}-${PKG_VERSION}
-
-  # Configure the build
-  case $PROJECT in
-    Generic|Nvidia_Legacy)
-    ;;
-
-    RPi|RPi2)
-      PMP_BUILD_TARGET="RPI"
-    ;;
-
-    WeTek_Hub|Odroid_C2)
-      PMP_BUILD_TARGET="AML"
-    ;;
-  esac
-
-  # Create seperate config build dir to not work in the github tree
-  [ ! -d build ] && mkdir build
-  cd build
-
-  if [ "$PLEX_DEBUG" = yes ]; then
-    BUILD_TYPE="debug" 
-    strip_lto
-  else
-    BUILD_TYPE="RelWithDebInfo"
-  fi
-
- # Cod Options
- if [ "${CODECS}" = "yes" ]; then
-  COD_OPTIONS_ENABLE="on"
-  COD_OPTIONS_DEPFOLDER="plexmediaplayer-openelec-codecs"
-  COD_DISABLE_BUNDLE_DEPS="off"
- else
-  COD_OPTIONS_ENABLE="off"
-  COD_DISABLE_BUNDLE_DEPS="on"
- fi
-
-echo "COD Options : ${COD_OPTIONS}"
-if [ -n ${DEPENDENCY_TOKEN} ]; then
-  DEP_TOKEN="-DDEPENDENCY_TOKEN=${DEPENDENCY_TOKEN}"
-fi
-
-CMAKE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/usr \
-               -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-               -DCMAKE_LIBRARY_PATH=$SYSROOT_PREFIX/usr/lib \
-               -DCMAKE_PREFIX_PATH=${SYSROOT_PREFIX};${SYSROOT_PREFIX}/usr/local/qt5 \
-               -DCMAKE_INCLUDE_PATH=${SYSROOT_PREFIX}/usr/include \
-               -DQTROOT=${SYSROOT_PREFIX}/usr/local/qt5 \
-               -DCMAKE_FIND_ROOT_PATH=${SYSROOT_PREFIX}/usr/local/qt5 \
-               -DCMAKE_VERBOSE_MAKEFILE=on \
-               -DOPENELEC=on \
-               -DBUILD_TARGET=${PMP_BUILD_TARGET} \
-               -DENABLE_CODECS=${COD_OPTIONS_ENABLE} \
-               -DOE_ARCH=${PLEX_CODEC_ARCH} \
-               -DDEPENDCY_FOLDER=${COD_OPTIONS_DEPFOLDER} \
-               -DDISABLE_BUNDLED_DEPS=${COD_DISABLE_BUNDLE_DEPS} \
-               $DEP_TOKEN \
-               $CRASHDUMP_SECRET"
-
-  CMAKE_OPTIONS+=" $ROOT/$BUILD/$PKG_NAME-$PKG_VERSION/."
-  cmake $CMAKE_OPTIONS
-
-
-  # Build the cmake toolchain file and .gdbinit
-  mkdir -p $ROOT/$PKG_BUILD/
+makeinstall_target() {
+ # Build the cmake toolchain file
   cp  $PKG_DIR/toolchain.cmake $ROOT/$PKG_BUILD/
   sed -e "s%@SYSROOT_PREFIX@%$SYSROOT_PREFIX%g" \
       -e "s%@TARGET_PREFIX@%$TARGET_PREFIX%g" \
@@ -151,45 +119,20 @@ CMAKE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/usr \
       -e "s%@COD_OPTIONS_DEPFOLDER@%$COD_OPTIONS_DEPFOLDER%g" \
       -e "s%@COD_DISABLE_BUNDLE_DEPS@%$COD_DISABLE_BUNDLE_DEPS%g" \
       -e "s%@COD_OE_ARCH@%${PLEX_CODEC_ARCH}%g" \
+      -e "s%@BUILD_TARGET@%${PMP_BUILD_TARGET}%g" \
       -i $ROOT/$PKG_BUILD/toolchain.cmake
 
-  # Configure the build
-  case $PROJECT in
-    Generic|Nvidia_Legacy)
-    ;;
-
-    RPi|RPi2)
-      CMAKE_OPTIONS+=" -DBUILD_TARGET=RPI"
-      echo "set(BUILD_TARGET \"RPI\")" >> $ROOT/$PKG_BUILD/toolchain.cmake
-    ;;
-
-    Wetek_Hub|Odroid_C2)
-      CMAKE_OPTIONS+=" -DBUILD_TARGET=AML"
-      echo "set(BUILD_TARGET \"AML\")" >> $ROOT/$PKG_BUILD/toolchain.cmake
-    ;;
-  esac
-
-  echo "set sysroot ${ROOT}/${BUILD}/image/system" > $ROOT/$PKG_BUILD/.gdbinit
-
-}
-
-makeinstall_target() {
+  # deploy files
   mkdir -p $INSTALL/usr/bin
-  cp  $ROOT/$BUILD/$PKG_NAME-$PKG_VERSION/build/src/${MEDIACENTER,,} ${INSTALL}/usr/bin/
-  cp  $ROOT/$BUILD/$PKG_NAME-$PKG_VERSION/build/src/pmphelper ${INSTALL}/usr/bin/
+  cp  $ROOT/$PKG_BUILD/.$TARGET_NAME/src/${MEDIACENTER,,} ${INSTALL}/usr/bin/
+  cp  $ROOT/$PKG_BUILD/.$TARGET_NAME/src/pmphelper ${INSTALL}/usr/bin/
 
   mkdir -p $INSTALL/usr/share/${MEDIACENTER,,} $INSTALL/usr/share/${MEDIACENTER,,}/scripts
-  cp -R $ROOT/$BUILD/$PKG_NAME-$PKG_VERSION/resources/* ${INSTALL}/usr/share/${MEDIACENTER,,}
+  cp -R $ROOT/$PKG_BUILD/resources/* ${INSTALL}/usr/share/${MEDIACENTER,,}
   cp $PKG_DIR/scripts/plex_update.sh ${INSTALL}/usr/share/${MEDIACENTER,,}/scripts/
-  cp -R $ROOT/$BUILD/$PKG_NAME-$PKG_VERSION/build/web-client* ${INSTALL}/usr/share/${MEDIACENTER,,}/
+  cp -R $ROOT/$PKG_BUILD/.$TARGET_NAME/web-client* ${INSTALL}/usr/share/${MEDIACENTER,,}/
 
  debug_strip $INSTALL/usr/bin
-}
-
-
-pre_install()
-{
- deploy_symbols
 }
 
 post_install() {
