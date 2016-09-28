@@ -97,6 +97,7 @@ configure_target() {
   fi
 
   # Undefines compiler options
+  BACKUP_STRIP=$STRIP
   unset CC CXX AR OBJCOPY STRIP CFLAGS CXXFLAGS CPPFLAGS LDFLAGS LD RANLIB
   export QT_FORCE_PKGCONFIG=yes
   unset QMAKESPEC
@@ -148,7 +149,7 @@ makeinstall_target() {
   esac
 
   #restore strip value
-  STRIP=$TARGET_STRIP
+  STRIP=$BACKUP_STRIP
   debug_strip ${INSTALL}/usr/local/qt5/
 }
 
