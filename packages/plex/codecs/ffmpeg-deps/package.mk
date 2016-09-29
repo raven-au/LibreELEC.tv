@@ -43,12 +43,12 @@ fi
 
 case $PROJECT in
         RPi|RPi2)
-        BUILD_TAG="linux-embedded-armv7"
+        BUILD_TAG="linux-openelec-armv7"
         PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET bcm2835-driver"
         ;;
 
         Generic|Nvidia_Legacy)
-        BUILD_TAG="linux-embedded-x86_64"
+        BUILD_TAG="linux-openelec-x86_64"
         ;;
 esac
 
@@ -60,6 +60,11 @@ unpack() {
 ### END PLEX
 
 make_target() {
+  case $PROJECT in
+         Generic)
+         strip_lto
+         ;;
+  esac
   export TARGET_CPU TARGET_ARCH TARGET_PREFIX SYSROOT_PREFIX HOST_CC HOST_CFLAGS HOST_LDFLAGS ARCH ROOT TOOLCHAIN
   ./bootstrap.py -k ${DEPS_PROJECT} -j 6 -p $BUILD_TAG -e ${PMP_GROUP} -v build
   : # nothing to do here
