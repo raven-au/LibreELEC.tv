@@ -37,6 +37,15 @@ PKG_CONFIGURE_OPTS_TARGET="--with-arch=$TARGET_ARCH \
                            --disable-dependency-tracking \
                            --disable-docs"
 
+### PLEX
+PKG_DEPENDS_HOST="toolchain freetype:host libxml2:host zlib:host"
+PKG_CONFIGURE_OPTS_HOST="${PKG_CONFIGURE_OPTS_TARGET} \
+			 --with-cache-dir=/usr/share/plexmediaplayer/fc-cache \
+			 --enable-static \
+			 --disable-shared"
+
+### END PLEX
+
 pre_configure_target() {
 # ensure we dont use '-O3' optimization.
   CFLAGS=`echo $CFLAGS | sed -e "s|-O3|-O2|"`
@@ -48,3 +57,22 @@ pre_configure_target() {
 post_makeinstall_target() {
   rm -rf $INSTALL/usr/bin
 }
+
+### PLEX
+pre_configure_host() {
+  if [ $ARCH = "arm" ]; then
+    PKG_CONFIGURE_OPTS_HOST="${PKG_CONFIGURE_OPTS_HOST} \
+			    --with-expat-lib=/usr/lib/i386-linux-gnu/ \
+			    --disable-largefile"
+
+    PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
+    CFLAGS="-m32 -malign-double"
+    CXXFLAGS="-m32 -malign-double"
+    LDFLAGS="-m32"
+  fi
+}
+
+makeinstall_host() {
+  cp $ROOT/$PKG_BUILD/.$HOST_NAME/fc-cache/fc-cache $ROOT/$TOOLCHAIN/bin
+}
+### END PLEX

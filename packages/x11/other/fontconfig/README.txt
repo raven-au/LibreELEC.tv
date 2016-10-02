@@ -1,4 +1,6 @@
 To build the pre-cache fc-cache use the following from a 64 bits ubuntu build host
+you needs additionnally gcc-multilib libexpat1-dev:i386 libfreetype6:i386
+
 build from the normal build fonctconfig build dir with a preliminary make clean.
 
 - ARM
