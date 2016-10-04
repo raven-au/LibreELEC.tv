@@ -51,6 +51,11 @@ PKG_BASE_BUILD_DEPENDS_TARGET="$PKG_DEPENDS_TARGET"
 # Configure the device option
 QT_MKSPECS_DEVICE="linux-${PROJECT}-g++"
 
+# Force debug build if on CI.
+if [ "$CI_BUILD" = true ]; then
+ QT_EXTRA_FLAGS="--force-debug-info"
+fi
+
 # Define Qt build base options
 QT_BASE_OPTS="	-sysroot ${SYSROOT_PREFIX} \
 		-prefix /usr/local/qt5 \
