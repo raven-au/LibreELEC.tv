@@ -61,11 +61,12 @@ post_makeinstall_target() {
 ### PLEX
 pre_configure_host() {
   if [ $ARCH = "arm" ]; then
+    PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
     PKG_CONFIGURE_OPTS_HOST="${PKG_CONFIGURE_OPTS_HOST} \
 			    --with-expat-lib=/usr/lib/i386-linux-gnu/ \
-			    --disable-largefile"
+			    --disable-largefile \
+			    --with-pkgconfigdir=${PKG_CONFIG_PATH}"
 
-    PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
     CFLAGS="-m32 -malign-double"
     CXXFLAGS="-m32 -malign-double"
     LDFLAGS="-m32"
