@@ -50,7 +50,7 @@ esac
 unpack() {
   case $PROJECT in
     WeTek_Hub|Odroid_C2)
-      git clone -b $PKG_VERSION git@github.com:LongChair/FFmpeg.git $BUILD/${PKG_NAME}-${PKG_VERSION}
+      git clone -b $PKG_VERSION git@github.com:wm4/FFmpeg.git $BUILD/${PKG_NAME}-${PKG_VERSION}
     ;;
 
     *)
