@@ -54,7 +54,7 @@ esac
 
 unpack() {
 
-        git clone --depth 1 -b $PKG_VERSION git@github.com:${DEPS_REPO}.git $BUILD/${PKG_NAME}-${PKG_VERSION}
+        git clone --depth 1 -b $DEPS_BRANCH git@github.com:${DEPS_REPO}.git $BUILD/${PKG_NAME}-${PKG_VERSION}
 
 }
 ### END PLEX
