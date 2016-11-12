@@ -104,8 +104,9 @@ pre_install()
  deploy_symbols
 }
 
-makeinstall_target() {
- # Build the cmake toolchain file
+pre_make_target()
+{
+  # Build the cmake toolchain file
   cp  $PKG_DIR/toolchain.cmake $ROOT/$PKG_BUILD/
   sed -e "s%@SYSROOT_PREFIX@%$SYSROOT_PREFIX%g" \
       -e "s%@TARGET_PREFIX@%$TARGET_PREFIX%g" \
@@ -121,7 +122,9 @@ makeinstall_target() {
       -e "s%@COD_OE_ARCH@%${PLEX_CODEC_ARCH}%g" \
       -e "s%@BUILD_TARGET@%${PMP_BUILD_TARGET}%g" \
       -i $ROOT/$PKG_BUILD/toolchain.cmake
+}
 
+makeinstall_target() {
   # deploy files
   mkdir -p $INSTALL/usr/bin
   cp  $ROOT/$PKG_BUILD/.$TARGET_NAME/src/${MEDIACENTER,,} ${INSTALL}/usr/bin/
