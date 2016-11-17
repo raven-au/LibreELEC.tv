@@ -13,3 +13,9 @@ As root run these commands:
 `apt-get install build-essential wget bc gawk gperf zip unzip lzop xsltproc openjdk-9-jre-headless libncurses5-dev texi2html libexpat1 gcc-multilib libexpat1-dev:i386 libfreetype6:i386 libexpat1-dev libfreetype6-dev`
 
 That should enable the host to build PMP Embedded and LibreELEC.
+
+To build a project navigate to the root of the source tree and run one of the two commands:
+
+RPi2: `DISTRO=PlexMediaPlayer PROJECT=RPi2 ARCH=arm PMP_REPO=plex-media-player PMP_BRANCH=master make image`
+
+Generic: `DISTRO=PlexMediaPlayer PROJECT=Generic ARCH=x86_64 PMP_REPO=plex-media-player PMP_BRANCH=master make image`
