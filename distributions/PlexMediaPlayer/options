@@ -217,8 +217,8 @@
   SYSTEM_PART_START=2048
 
 # Plex extra dependencies
-# fc-cache build requirements for 32bits
-EXTRA_DEPS_PKG="${EXTRA_DEPS_PKG} gcc-multilib libexpat1-dev:i386 libfreetype6:i386 libexpat1-dev libfreetype6-dev"
+DISTRO_DEPS="pip"
+DISTRO_DEPS_PKG="python-pip"
 
 # Qt Modules configuration
   QT_MODULES_CONFIG="	-no-accessibility -skip qtactiveqt -skip qtandroidextras \
