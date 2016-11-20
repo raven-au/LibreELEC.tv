@@ -24,7 +24,7 @@ PKG_ARCH="any"
 PKG_LICENSE="GPL"
 PKG_SITE="https://nightlies.plex.tv"
 PKG_URL="$PKG_SITE/directdl/plex-oe-sources/$PKG_NAME-dummy.tar.gz"
-PKG_DEPENDS_TARGET="toolchain systemd fontconfig qt5 libcec SDL2 libXdmcp breakpad breakpad:host samba libconnman-qt ${MEDIACENTER,,}-fonts-ttf fontconfig:host mpv"
+PKG_DEPENDS_TARGET="toolchain systemd fontconfig qt5 libcec SDL2 libXdmcp breakpad breakpad:host samba libconnman-qt ${MEDIACENTER,,}-fonts-ttf fontconfig:host mpv conan:host"
 PKG_DEPENDS_HOST="toolchain"
 PKG_PRIORITY="optional"
 PKG_SECTION="mediacenter"
@@ -97,6 +97,14 @@ unpack() {
   fi
 
   cd ${ROOT}	
+}
+
+pre_configure_target()
+{
+ # grab webclients with conan
+ $ROOT/$TOOLCHAIN/bin/python  "$ROOT/$TOOLCHAIN/bin/conan" remote add plex https://conan.plex.tv || true 
+ $ROOT/$TOOLCHAIN/bin/python  "$ROOT/$TOOLCHAIN/bin/conan" user -r plex -p $CONAN_TOKEN plex
+ $ROOT/$TOOLCHAIN/bin/python  "$ROOT/$TOOLCHAIN/bin/conan" install $ROOT/$PKG_BUILD
 }
 
 pre_install()
