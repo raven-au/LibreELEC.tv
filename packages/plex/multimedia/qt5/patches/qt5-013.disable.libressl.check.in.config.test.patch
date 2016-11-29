@@ -1,0 +1,13 @@
+--- a/qtbase/config.tests/unix/openssl/openssl.cpp	2016-10-27 13:30:49.000000000 +0200
++++ b/qtbase/config.tests/unix/openssl/openssl.cpp2	2016-11-28 18:31:38.048609843 +0100
+@@ -45,10 +45,6 @@
+ 
+ #include <openssl/ssl.h>
+ 
+-#if OPENSSL_VERSION_NUMBER-0 >= 0x10002000L && !defined(OPENSSL_NO_EC) && !defined(SSL_CTRL_SET_CURVES)
+-#  error "OpenSSL was reported as >= 1.0.2 but is missing required features, possibly it's libressl which is unsupported"
+-#endif
+-
+ int main()
+ {
+ }
