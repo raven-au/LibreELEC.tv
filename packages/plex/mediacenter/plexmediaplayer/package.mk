@@ -103,6 +103,7 @@ unpack() {
 pre_configure_target()
 {
  # grab webclients with conan
+ export export CONAN_USER_HOME=/data/conan
  $ROOT/$TOOLCHAIN/bin/python  "$ROOT/$TOOLCHAIN/bin/conan" remote add plex https://conan.plex.tv || true 
  $ROOT/$TOOLCHAIN/bin/python  "$ROOT/$TOOLCHAIN/bin/conan" user -r plex -p $CONAN_TOKEN plex
  $ROOT/$TOOLCHAIN/bin/python  "$ROOT/$TOOLCHAIN/bin/conan" install $ROOT/$PKG_BUILD -oinclude_desktop=False
