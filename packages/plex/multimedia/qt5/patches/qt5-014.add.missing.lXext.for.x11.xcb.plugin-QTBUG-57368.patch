@@ -1,0 +1,11 @@
+--- a/qtbase/src/gui/configure.json	2016-11-29 12:31:41.000000000 +0100
++++ b/qtbase/src/gui/configure.json2	2016-12-10 20:05:47.958667640 +0100
+@@ -236,7 +236,7 @@
+             "test": "qpa/xcb-xlib",
+             "sources": [
+                 { "type": "pkgConfig", "args": "X11-xcb x11 xcb" },
+-                "-lxcb -lX11 -lX11-xcb"
++                "-lxcb -lX11 -lX11-xcb -lXext"
+             ]
+         },
+         "xcb_xkb": {
