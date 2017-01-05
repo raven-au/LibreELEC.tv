@@ -1,0 +1,11 @@
+--- a/qtbase/src/plugins/bearer/connman/qconnmanservice_linux.cpp	2016-12-16 05:07:22.000000000 +0100
++++ b/qtbase/src/plugins/bearer/connman/qconnmanservice_linux.cpp	2017-01-05 08:39:38.773837867 +0100
+@@ -506,7 +506,7 @@
+ 
+ void QConnmanTechnologyInterface::scanReply(QDBusPendingCallWatcher *call)
+ {
+-    QDBusPendingReply<QVariantMap> props_reply = *call;
++    QDBusPendingReply<> props_reply = *call;
+     if (props_reply.isError()) {
+         qDebug() << props_reply.error().message();
+     }
