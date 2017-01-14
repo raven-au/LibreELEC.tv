@@ -33,7 +33,7 @@ PKG_IS_ADDON="no"
 PKG_AUTORECONF="no"
 
 PKG_BASE_DEPENDS_TARGET="curl bzip2 Python zlib:host zlib libpng tiff dbus glib fontconfig glibc flex bison ruby libdrm atk"
-PKG_BASE_BUILD_DEPENDS_TARGET="bzip2 Python zlib:host zlib libpng tiff dbus glib fontconfig libressl linux-headers glibc pulseaudio"
+PKG_BASE_BUILD_DEPENDS_TARGET="bzip2 Python zlib:host zlib libpng tiff dbus glib fontconfig openssl linux-headers glibc pulseaudio"
 
 # determine QPA related packages
 if [ "$DISPLAYSERVER" = "x11" ]; then

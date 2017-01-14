@@ -23,7 +23,7 @@ PKG_ARCH="any"
 PKG_LICENSE="LGPLv2.1+"
 PKG_SITE="https://nightlies.plex.tv"
 PKG_URL="$PKG_SITE/directdl/plex-oe-sources/$PKG_NAME-dummy.tar.gz"
-PKG_DEPENDS_TARGET="toolchain yasm:host zlib bzip2 libvorbis libressl gnutls"
+PKG_DEPENDS_TARGET="toolchain yasm:host zlib bzip2 libvorbis openssl gnutls"
 
 PKG_PRIORITY="optional"
 PKG_SECTION="multimedia"
