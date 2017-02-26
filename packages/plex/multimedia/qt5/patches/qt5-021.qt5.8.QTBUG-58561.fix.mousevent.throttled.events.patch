@@ -1,0 +1,39 @@
+From b70bdb111e16d9437f60725f8c2854014a569289 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Michael=20Br=C3=BCning?= <michael.bruning@qt.io>
+Date: Wed, 22 Feb 2017 16:33:45 +0100
+Subject: [PATCH] Ignore synthetic hover move events if the mouse has not
+ actually moved
+
+6f84a09dfb and b2501b0bda in qtdeclarative introduced a synthetic
+hover move  event being sent once per frame if the item underneath
+the mouse is marked as dirty. This triggers a loop when the web
+contents changes reacting to mouse move events as the item needs to
+be marked dirty to be rerendered.
+
+Ignore hover move events if the position of the mouse has actually not
+changed to work around this.
+
+Task-number: QTBUG-58561
+Change-Id: Ic7f3c06e7acf5dfeacc95e347bd026233c957556
+Reviewed-by: Alexandru Croitor <alexandru.croitor@qt.io>
+---
+ src/webengine/render_widget_host_view_qt_delegate_quick.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/webengine/render_widget_host_view_qt_delegate_quick.cpp b/src/webengine/render_widget_host_view_qt_delegate_quick.cpp
+index f79b0ca..4e4fc40 100644
+--- a/qtwebengine/src/webengine/render_widget_host_view_qt_delegate_quick.cpp
++++ b/qtwebengine/src/webengine/render_widget_host_view_qt_delegate_quick.cpp
+@@ -323,7 +323,8 @@ void RenderWidgetHostViewQtDelegateQuick::touchEvent(QTouchEvent *event)
+ void RenderWidgetHostViewQtDelegateQuick::hoverMoveEvent(QHoverEvent *event)
+ {
+     QQuickItem *parent = parentItem();
+-    if (!m_isPopup && parent && !parent->property("activeFocusOnPress").toBool() && !parent->hasActiveFocus()) {
++    if ((!m_isPopup && parent && !parent->property("activeFocusOnPress").toBool()
++         && !parent->hasActiveFocus()) || event->posF() == event->oldPosF()) {
+         event->ignore();
+         return;
+     }
+-- 
+2.7.4
+
