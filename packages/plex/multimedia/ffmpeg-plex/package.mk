@@ -54,7 +54,7 @@ unpack() {
     ;;
 
     *)
-      git clone --depth 1 -b $PKG_VERSION git@github.com:wm4/FFmpeg.git $BUILD/${PKG_NAME}-${PKG_VERSION}
+      git clone --depth 1 -b $PKG_VERSION git@github.com:FFmpeg/FFmpeg.git $BUILD/${PKG_NAME}-${PKG_VERSION}
     ;;
   esac
 }
